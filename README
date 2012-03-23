@@ -1,0 +1,10 @@
+Set of Hadoop based tools for web analytis. Currently includes the following
+
+- Bayesian discriminant analysis for visitor conversion prediction
+
+Will add the following
+
+- Extend bayesian discriminant analysis for multiple variables
+- Simple visit statistics
+
+
