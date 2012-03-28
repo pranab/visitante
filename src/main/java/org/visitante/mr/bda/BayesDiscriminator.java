@@ -1,6 +1,18 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * visitante: Web analytic using Hadoop Map Reduce
+ * Author: Pranab Ghosh
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You may
+ * obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0 
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License.
  */
 
 package org.visitante.mr.bda;
@@ -81,6 +93,8 @@ public class BayesDiscriminator implements Tool {
         private Text keyHolder = new Text();
         private IntWritable valueHolder = new IntWritable(1);
         private Map<String, Integer>  clickCount = new HashMap<String, Integer>();
+        private static final int CLICK_COUNT = 0;
+        private static final int CONVERTED = 2;
         
         protected void cleanup(Context context) throws IOException, InterruptedException {
             for (String keyVal : clickCount.keySet()){
@@ -94,7 +108,7 @@ public class BayesDiscriminator implements Tool {
         protected void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
             String[] items  =  value.toString().split(",");
-            String keyVal = items[2] + "," + items[0];
+            String keyVal = items[CONVERTED] + "," + items[CLICK_COUNT];
             Integer count = clickCount.get(keyVal);
             if (null == count){
                count = 0; 
