@@ -29,8 +29,11 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -65,6 +68,9 @@ public class SessionExtractor extends Configured implements Tool {
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(Text.class);
 
+        job.setGroupingComparatorClass(SessionIdGroupComprator.class);
+        job.setPartitionerClass(SessionIdPartitioner.class);
+
         job.setNumReduceTasks(job.getConfiguration().getInt("num.reducer", 1));
         
         int status =  job.waitForCompletion(true) ? 0 : 1;
@@ -79,24 +85,29 @@ public class SessionExtractor extends Configured implements Tool {
         private Map<String, String> filedMetaData;
         private static final String itemDelim = ",";
         private static final String keyDelim = ":";
-        private int sessionIDOrd;
+        private int cookieOrd;
         private   int dateOrd;
         private  int timeOrd;
         private  int urlOrd;
         private SimpleDateFormat dateFormat;
         private Date date;
         private long timeStamp;
+        private String sessionIDName;
+        private String cookie;
+        private String sessionID;
+        private String[] cookieItems;
         
         protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\[\\]");
         	String fieldMetaSt = context.getConfiguration().get("field.meta");
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
-            sessionIDOrd =new Integer(filedMetaData.get("sessionID"));
+           cookieOrd =new Integer(filedMetaData.get("sessionID"));
             dateOrd =new Integer(filedMetaData.get("date"));
             timeOrd =new Integer(filedMetaData.get("time"));
             urlOrd=new Integer(filedMetaData.get("url"));
             dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            sessionIDName = context.getConfiguration().get("session.id.name");
        }
 
         @Override
@@ -106,7 +117,8 @@ public class SessionExtractor extends Configured implements Tool {
             try {
 				date = dateFormat.parse(items[dateOrd] + " " + items[timeOrd]);
 				timeStamp = date.getTime();
-				outKey.set(items[sessionIDOrd], timeStamp);
+				 getSessionID();
+				outKey.set(sessionID, timeStamp);
 				outVal.set(items[urlOrd], timeStamp);
    	   			context.write(outKey, outVal);
 			} catch (ParseException ex) {
@@ -114,6 +126,18 @@ public class SessionExtractor extends Configured implements Tool {
 			}
         	
         }
+        
+        private void  getSessionID() {
+        	cookie = items[cookieOrd];
+        	cookieItems = cookie.split("\\+");
+        	for (String item :  cookieItems) {
+        		if (item.startsWith(sessionIDName)) {
+        			sessionID = item.split("=")[1];
+        			break;
+        		}
+        	}
+        }
+        
     }	
 	
 	public static class SessionReducer extends Reducer<TextLong, TextLong, NullWritable, Text> {
@@ -152,6 +176,29 @@ public class SessionExtractor extends Configured implements Tool {
     	}	
 	 }
 	   
+    public static class SessionIdPartitioner extends Partitioner<TextLong, TextLong> {
+	     @Override
+	     public int getPartition(TextLong key, TextLong value, int numPartitions) {
+	    	 //consider only base part of  key
+		     return key.baseHashCode()% numPartitions;
+	     }
+    }
+    
+    public static class SessionIdGroupComprator extends WritableComparator {
+    	protected SessionIdGroupComprator() {
+    		super(TextLong.class, true);
+    	}
+
+    	@Override
+    	public int compare(WritableComparable w1, WritableComparable w2) {
+    		//consider only the base part of the key
+    		TextLong t1 = ((TextLong)w1);
+    		TextLong t2 = ((TextLong)w2);
+    		return t1.baseCompareTo(t2);
+    	}
+     }
+    
+	
     public static void main(String[] args) throws Exception {
         int exitCode = ToolRunner.run(new SessionExtractor(), args);
         System.exit(exitCode);
