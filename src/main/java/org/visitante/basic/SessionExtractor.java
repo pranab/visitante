@@ -41,6 +41,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.chombo.mr.NumericSorter;
 import org.chombo.util.TextLong;
+import org.chombo.util.Tuple;
 import org.chombo.util.Utility;
 
 
@@ -63,7 +64,7 @@ public class SessionExtractor extends Configured implements Tool {
         job.setReducerClass(SessionExtractor.SessionReducer.class);
 
         job.setMapOutputKeyClass(TextLong.class);
-        job.setMapOutputValueClass(TextLong.class);
+        job.setMapOutputValueClass(Tuple.class);
 
         job.setOutputKeyClass(NullWritable.class);
         job.setOutputValueClass(Text.class);
@@ -77,10 +78,10 @@ public class SessionExtractor extends Configured implements Tool {
         return status;
 	}
 	
-	public static class SessionMapper extends Mapper<LongWritable, Text, TextLong, TextLong> {
+	public static class SessionMapper extends Mapper<LongWritable, Text, TextLong, Tuple> {
 		private String[] items;
 		private TextLong outKey = new TextLong();
-		private TextLong outVal = new TextLong();
+		private Tuple outVal = new Tuple();
         private String fieldDelimRegex;
         private Map<String, String> filedMetaData;
         private static final String itemDelim = ",";
@@ -91,23 +92,28 @@ public class SessionExtractor extends Configured implements Tool {
         private  int urlOrd;
         private SimpleDateFormat dateFormat;
         private Date date;
-        private long timeStamp;
+        private Long timeStamp;
         private String sessionIDName;
+        private String userIDName;
         private String cookie;
         private String sessionID;
+        private String userID;
         private String[] cookieItems;
+        private String cookieSeparator;
         
         protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\[\\]");
         	String fieldMetaSt = context.getConfiguration().get("field.meta");
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
-           cookieOrd =new Integer(filedMetaData.get("sessionID"));
+        	cookieOrd =new Integer(filedMetaData.get("sessionID"));
             dateOrd =new Integer(filedMetaData.get("date"));
             timeOrd =new Integer(filedMetaData.get("time"));
             urlOrd=new Integer(filedMetaData.get("url"));
             dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             sessionIDName = context.getConfiguration().get("session.id.name");
+            userIDName = context.getConfiguration().get("session.id.name");
+            cookieSeparator = context.getConfiguration().get("cookie.separator");
        }
 
         @Override
@@ -119,7 +125,8 @@ public class SessionExtractor extends Configured implements Tool {
 				timeStamp = date.getTime();
 				 getSessionID();
 				outKey.set(sessionID, timeStamp);
-				outVal.set(items[urlOrd], timeStamp);
+				outVal.initialize();
+				outVal.add(userID, items[urlOrd],  timeStamp);
    	   			context.write(outKey, outVal);
 			} catch (ParseException ex) {
 				throw new IOException("Failed to parse date time", ex);
@@ -129,10 +136,13 @@ public class SessionExtractor extends Configured implements Tool {
         
         private void  getSessionID() {
         	cookie = items[cookieOrd];
-        	cookieItems = cookie.split("\\+");
+        	cookieItems = cookie.split(cookieSeparator);
         	for (String item :  cookieItems) {
         		if (item.startsWith(sessionIDName)) {
         			sessionID = item.split("=")[1];
+        		}
+        		if (item.startsWith(userIDName)) {
+        			userID = item.split("=")[1];
         			break;
         		}
         	}
@@ -140,36 +150,39 @@ public class SessionExtractor extends Configured implements Tool {
         
     }	
 	
-	public static class SessionReducer extends Reducer<TextLong, TextLong, NullWritable, Text> {
+	public static class SessionReducer extends Reducer<TextLong, Tuple, NullWritable, Text> {
 		private Text outVal = new Text();
 		private StringBuilder stBld;
 		private String fieldDelim;
 		private String sessionID;
+		private String userID;
 		private long lastTimeStamp;
 		private long timeStamp;
 		private String lastUrl;
 		private long timeOnPage;
+		private long sessionStartTime;
 
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim", "[]");
        }
 		
-    	protected void reduce(TextLong key, Iterable<TextLong> values, Context context)
+    	protected void reduce(TextLong key, Iterable<Tuple> values, Context context)
         	throws IOException, InterruptedException {
     		sessionID = key.getFirst().toString();
     		boolean first = true;
-    		for (TextLong val : values) {
+    		for (Tuple val : values) {
     			if (first) {
-    				lastUrl = val.getFirst().toString();
-    				lastTimeStamp = val.getSecond().get();
+    				userID = (String) val.get(0);
+    				lastUrl =(String) val.get(1);
+    				sessionStartTime = lastTimeStamp = (Long)val.get(2);
     				first = false;
     			} else {
-    				timeStamp = val.getSecond().get();
+    				timeStamp =  (Long)val.get(2);
     				timeOnPage = timeStamp - lastTimeStamp;
-    				outVal.set( sessionID + fieldDelim + lastUrl + fieldDelim +  timeOnPage);
+    				outVal.set(userID + fieldDelim  +  sessionID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
     				context.write(NullWritable.get(),outVal);
     				
-    				lastUrl = val.getFirst().toString();
+    				lastUrl = (String) val.get(1);
     				lastTimeStamp = timeStamp;
     			}
     		}
