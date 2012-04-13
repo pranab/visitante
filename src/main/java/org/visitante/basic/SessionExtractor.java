@@ -53,7 +53,7 @@ public class SessionExtractor extends Configured implements Tool {
         String jobName = "web log session extraction  MR";
         job.setJobName(jobName);
         
-        job.setJarByClass(NumericSorter.class);
+        job.setJarByClass(SessionExtractor.class);
 
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
@@ -90,6 +90,7 @@ public class SessionExtractor extends Configured implements Tool {
         private   int dateOrd;
         private  int timeOrd;
         private  int urlOrd;
+        private int referrerOrd;
         private SimpleDateFormat dateFormat;
         private Date date;
         private Long timeStamp;
@@ -102,18 +103,19 @@ public class SessionExtractor extends Configured implements Tool {
         private String cookieSeparator;
         
         protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\[\\]");
+        	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\s+");
         	String fieldMetaSt = context.getConfiguration().get("field.meta");
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
-        	cookieOrd =new Integer(filedMetaData.get("sessionID"));
+        	cookieOrd =new Integer(filedMetaData.get("cookie"));
             dateOrd =new Integer(filedMetaData.get("date"));
             timeOrd =new Integer(filedMetaData.get("time"));
             urlOrd=new Integer(filedMetaData.get("url"));
+            referrerOrd=new Integer(filedMetaData.get("referrer"));
             dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             sessionIDName = context.getConfiguration().get("session.id.name");
-            userIDName = context.getConfiguration().get("session.id.name");
-            cookieSeparator = context.getConfiguration().get("cookie.separator");
+            userIDName = context.getConfiguration().get("user.id.name");
+            cookieSeparator = context.getConfiguration().get("cookie.separator", ";\\+");
        }
 
         @Override
@@ -123,10 +125,10 @@ public class SessionExtractor extends Configured implements Tool {
             try {
 				date = dateFormat.parse(items[dateOrd] + " " + items[timeOrd]);
 				timeStamp = date.getTime();
-				 getSessionID();
+				getSessionID();
 				outKey.set(sessionID, timeStamp);
 				outVal.initialize();
-				outVal.add(userID, items[urlOrd],  timeStamp);
+				outVal.add(userID, items[urlOrd],  timeStamp, items[referrerOrd]);
    	   			context.write(outKey, outVal);
 			} catch (ParseException ex) {
 				throw new IOException("Failed to parse date time", ex);
@@ -143,7 +145,6 @@ public class SessionExtractor extends Configured implements Tool {
         		}
         		if (item.startsWith(userIDName)) {
         			userID = item.split("=")[1];
-        			break;
         		}
         	}
         }
@@ -163,7 +164,7 @@ public class SessionExtractor extends Configured implements Tool {
 		private long sessionStartTime;
 
 		protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelim = context.getConfiguration().get("field.delim", "[]");
+        	fieldDelim = context.getConfiguration().get("field.delim.out", "[]");
        }
 		
     	protected void reduce(TextLong key, Iterable<Tuple> values, Context context)
@@ -178,20 +179,26 @@ public class SessionExtractor extends Configured implements Tool {
     				first = false;
     			} else {
     				timeStamp =  (Long)val.get(2);
-    				timeOnPage = timeStamp - lastTimeStamp;
-    				outVal.set(userID + fieldDelim  +  sessionID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
+    				timeOnPage = (timeStamp - lastTimeStamp) / 1000;
+    				outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
     				context.write(NullWritable.get(),outVal);
     				
     				lastUrl = (String) val.get(1);
     				lastTimeStamp = timeStamp;
     			}
+    			
+    			//last page
+    			timeOnPage = 0;
+				outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
+				context.write(NullWritable.get(),outVal);
     		}
+    		
     	}	
 	 }
 	   
-    public static class SessionIdPartitioner extends Partitioner<TextLong, TextLong> {
+    public static class SessionIdPartitioner extends Partitioner<TextLong, Tuple> {
 	     @Override
-	     public int getPartition(TextLong key, TextLong value, int numPartitions) {
+	     public int getPartition(TextLong key, Tuple value, int numPartitions) {
 	    	 //consider only base part of  key
 		     return key.baseHashCode()% numPartitions;
 	     }
