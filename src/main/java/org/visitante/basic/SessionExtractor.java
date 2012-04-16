@@ -58,7 +58,7 @@ public class SessionExtractor extends Configured implements Tool {
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-        Utility.setConfiguration(job.getConfiguration());
+        Utility.setConfiguration(job.getConfiguration(), "visitante");
         
         job.setMapperClass(SessionExtractor.SessionMapper.class);
         job.setReducerClass(SessionExtractor.SessionReducer.class);
@@ -105,6 +105,7 @@ public class SessionExtractor extends Configured implements Tool {
         protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\s+");
         	String fieldMetaSt = context.getConfiguration().get("field.meta");
+        	System.out.println("fieldMetaSt:" + fieldMetaSt);
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
         	cookieOrd =new Integer(filedMetaData.get("cookie"));
@@ -186,12 +187,11 @@ public class SessionExtractor extends Configured implements Tool {
     				lastUrl = (String) val.get(1);
     				lastTimeStamp = timeStamp;
     			}
-    			
-    			//last page
-    			timeOnPage = 0;
-				outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
-				context.write(NullWritable.get(),outVal);
     		}
+			//last page
+			timeOnPage = 0;
+			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
+			context.write(NullWritable.get(),outVal);
     		
     	}	
 	 }
