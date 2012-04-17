@@ -18,6 +18,8 @@
 package org.visitante.basic;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -74,20 +76,64 @@ public class SessionSummarizer  extends Configured implements Tool {
 		private String fieldDelim;
 		private String sessionID;
 		private String userID;
-		private String lastUrl;
-		private long timeSpent;
-		private int numPages;
+		private List<String> pages = new ArrayList<String>();
+		private String[] flow;
+		private int flowStat;
+		private String lastPage;
+		private long timeStart;
+		private long timeEnd;
+		private static final int FLOW_NOT_ENTERED = 0;
+		private static final int FLOW_ENTERED = 1;
+		private static final int FLOW_COMPLETED = 2;
 		
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim.out", "[]");
+        	flow = context.getConfiguration().get("field.delim.out").split(",");
        }
 		
     	protected void reduce(TextLong key, Iterable<Tuple> values, Context context)
         	throws IOException, InterruptedException {
-    		//TODO
-    		
+    		sessionID = key.getFirst().toString();
+    		boolean first = true;
+    		pages.clear();
+    		for (Tuple val : values) {
+    			if (first) {
+    				userID = (String) val.get(0);
+    				timeStart = val.getLong(2);
+    				first = false;
+    			} else {
+    				timeEnd = val.getLong(2);
+    			}
+    			pages.add(val.getString(1));
+    		}    
+    		lastPage = pages.get(pages.size()-1);
+    		checkFlowStatus();
+			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + pages.size() +  fieldDelim + (timeEnd - timeStart) + 
+					lastPage + fieldDelim +  flowStat);
+			context.write(NullWritable.get(),outVal);
     	}
+    	
+    	private void checkFlowStatus() {
+    		int j = 0;
+    		flowStat = FLOW_NOT_ENTERED;
+    		boolean matched = false;
+    		
+    		for (int i = 0; i < flow.length; ++i) {
+    			while ( j < pages.size()) {
+    				matched = false;
+    				if (pages.get(j).startsWith(flow[i])) {
+    					flowStat =  i == flow.length - 1 ?  FLOW_COMPLETED :  FLOW_ENTERED;
+    				}
+    				++j;
+    				if (matched) {
+    					break;
+    				}
+    			}
+    		}
+    	}
+    	
     }	
+	
 
     public static void main(String[] args) throws Exception {
         int exitCode = ToolRunner.run(new SessionSummarizer(), args);
