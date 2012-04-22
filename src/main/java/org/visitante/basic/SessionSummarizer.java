@@ -54,7 +54,7 @@ public class SessionSummarizer  extends Configured implements Tool {
         Utility.setConfiguration(job.getConfiguration(), "visitante");
         
         job.setMapperClass(SessionExtractor.SessionMapper.class);
-        job.setReducerClass(SessionExtractor.SessionReducer.class);
+        job.setReducerClass(SessionSummarizer.SessionReducer.class);
 
         job.setMapOutputKeyClass(TextLong.class);
         job.setMapOutputValueClass(Tuple.class);
@@ -82,13 +82,14 @@ public class SessionSummarizer  extends Configured implements Tool {
 		private String lastPage;
 		private long timeStart;
 		private long timeEnd;
+		private long timeSpent;
 		private static final int FLOW_NOT_ENTERED = 0;
 		private static final int FLOW_ENTERED = 1;
 		private static final int FLOW_COMPLETED = 2;
 		
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim.out", "[]");
-        	flow = context.getConfiguration().get("field.delim.out").split(",");
+        	flow = context.getConfiguration().get("flow.sequence").split(",");
        }
 		
     	protected void reduce(TextLong key, Iterable<Tuple> values, Context context)
@@ -108,8 +109,9 @@ public class SessionSummarizer  extends Configured implements Tool {
     		}    
     		lastPage = pages.get(pages.size()-1);
     		checkFlowStatus();
-			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + pages.size() +  fieldDelim + (timeEnd - timeStart) + 
-					lastPage + fieldDelim +  flowStat);
+    		timeSpent =  pages.size() > 1 ?   (timeEnd - timeStart) / 1000 : 0;
+			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + pages.size() +  fieldDelim + timeSpent + 
+					fieldDelim + lastPage + fieldDelim +  flowStat);
 			context.write(NullWritable.get(),outVal);
     	}
     	
@@ -123,6 +125,7 @@ public class SessionSummarizer  extends Configured implements Tool {
     				matched = false;
     				if (pages.get(j).startsWith(flow[i])) {
     					flowStat =  i == flow.length - 1 ?  FLOW_COMPLETED :  FLOW_ENTERED;
+    					matched = true;
     				}
     				++j;
     				if (matched) {
