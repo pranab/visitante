@@ -21,28 +21,52 @@ class UserSession
 		@sessionEnd = sessionEnd
 		@numPages = numPages
 		@visits = []
+		@home = "http://www.healthyshopping.com"
 	end
 
-	def genVisits(pages, keyWords, referrers)
+	def genVisits(pageDist, flow, keyWords, referrerDist)
 		duration = @sessionEnd - @sessionStart
 		avTimeSpent = duration / (@numPages + 1)
 		time = @sessionStart
-		1.upto @numPages do
-			index = rand(pages.length)
-			page = pages[index]
+		
+		r = rand(100)
+		enteredFlow = r < 10
+		completedFlow = r < 5
+		np = enteredFlow ? (2 + rand(3)) : @numPages;
+		#puts "*** flow ***#{enteredFlow}  #{completedFlow}"
+		
+		1.upto np do
+			page = pageDist.value
 			if (page.rindex("search"))
 				page = page + "/" + keyWords[rand(keyWords.length)]
 			end
 			if (@visits.length == 0)
-				referrer = referrers[1 + rand(referrers.length - 1)]
+				#external referrer
+				referrer = referrerDist.value
 			else 
-				referrer = referrers[0] + @visits[@visits.length - 1].url
+				#internal referrer
+				referrer = @home + @visits[@visits.length - 1].url
 			end
 			visit = Visit.new(time, page, referrer)
 			@visits << visit
 			time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
 			#puts "user visit time #{@userID}  #{time}"
 		end 
+		
+		#visits for flow
+		if (enteredFlow)
+			flow.each do |p|
+				referrer = @home + @visits[@visits.length - 1].url
+				visit = Visit.new(time, p, referrer)
+				time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
+				@visits << visit
+				
+				if (!completedFlow && rand(3) == 0)
+					break
+				end
+			 
+			end
+		end
 	end
 	
 	def clearVisits 
@@ -77,8 +101,8 @@ date = ARGV[0]
 numUser = ARGV[1].to_i
 users = []
 activeSessions = []
-pages = []
 secDay = 24 * 60 * 60
+secHour = 60 * 60
 idGen = IdGenerator.new
 authTokenName = "__RequestVerificationToken_Lw__"
 sessionIDName = ".ASPXAUTH"
@@ -91,14 +115,6 @@ keyWords << "cholestrol"
 keyWords << "blood+pressure"
 keyWords << "toxin+cleanser"
 
-numPage = 12
-addPage(pages, "/search", 30)
-addPage(pages, "/myAccount", 8)
-addPage(pages, "/myCart", 14)
-addPage(pages, "/myWishList", 10)
-addPage(pages, "/trackOrder", 16)
-addPage(pages, "/addToCart", 14)
-addPage(pages, "/help", 6)
 
 #flow
 flow = []
@@ -110,21 +126,43 @@ flow << "/billing"
 flow << "/confirmShipping"
 flow << "/placeOrder"
 
-#refererrs
-referrers = []
-referrers << "http://www.shophealthy.com"
-referrers << "-"
-referrers << "http://www.google.com"
-referrers << "http://www.facebook.com"
-referrers << "http://www.twitter.com"
+referrerDist = CategoricalField.new("-", 2, "http://www.google.com", 6, 
+  "http://www.facebook.com", 3, "http://www.twitter.com", 2, "http://www.myhealth.com", 5)
+
+# pages
+pageDistValues = []
+pageDistValues << "/search"
+pageDistValues << 30
+pageDistValues << "/myAccount"
+pageDistValues << 8
+pageDistValues << "/myCart"
+pageDistValues << 14
+pageDistValues << "/myWishList"
+pageDistValues << 10
+pageDistValues << "/trackOrder"
+pageDistValues << 16
+pageDistValues << "/addToCart"
+pageDistValues << 14
+pageDistValues << "/help"
+pageDistValues << 6
+
 
 # product pages
 File.open("product.txt", "r") do |p|
 	while (line = p.gets)
 		prodID = line.split[0]
-		pages  << "/product/#{prodID}"
+		pageDistValues  << "/product/#{prodID}"
+		pageDistValues << (1 + rand(5))
 	end
 end
+
+pageDist = CategoricalField.new(pageDistValues)
+
+
+#arrival time distribution
+hourDist = NumericalField.new(false,0..4,10,5..8,20,9..14,30,15..16,50,17..18,30,19..20,40,21..23,20)
+#duration distribution
+durationDist = NumericalField.new(false,0..1,10,2..4,20,5..8,30,9..11,40,12..15,50,16..20,40,21..25,20,26..30,10)
 
 #sample user from user list for the day
 File.open("user.txt", "r") do |infile|
@@ -134,10 +172,17 @@ File.open("user.txt", "r") do |infile|
 		if (skip > 0)
 			skip = skip -1
 		else 
-			sessionStart = rand(secDay - 300)
-			duration = 10 + rand(1200)
+			#sessionStart = rand(secDay - 300)
+			hour = hourDist.value
+			sessionStart = hour * secHour + rand(secHour) - 600
+			
+			#duration = 10 + rand(1200)
+			duration = durationDist.value * 60  + rand(60)
+			duration = duration < 10 ? 10 : duration
+			
 			sessionEnd = sessionStart + duration
 			sessionEnd = sessionEnd < secDay ? sessionEnd : secDay - 1
+			
 			numPages = duration / 90 + rand(4) - 2
 			numPages = numPages < 1  ? 1 : numPages
 			#puts "#{line} #{sessionStart} #{sessionEnd} #{numPages}"
@@ -155,7 +200,7 @@ while i < secDay
 	users.each do |u|
 		if u.sessionStart == i
 			activeSessions << u;
-			u.genVisits(pages, keyWords, referrers)
+			u.genVisits(pageDist, flow, keyWords, referrerDist)
 		elsif u.sessionEnd == i
 			activeSessions.delete(u)
 			u.clearVisits

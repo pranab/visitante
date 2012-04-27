@@ -62,12 +62,14 @@ class IdField
 end
 
 class CategoricalField
+
 	def initialize(*args)
 		@dist = []
+		values = args.size == 1 ? args[0] : args
 		i = 0;
-		while (i < args.length)
-			val = args[i]
-			count = args[i + 1]
+		while (i < values.length)
+			val = values[i]
+			count = values[i + 1]
 			1.upto count do
 				@dist << val
 			end
