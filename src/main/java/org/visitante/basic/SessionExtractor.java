@@ -129,7 +129,7 @@ public class SessionExtractor extends Configured implements Tool {
 				getSessionID();
 				outKey.set(sessionID, timeStamp);
 				outVal.initialize();
-				outVal.add(userID, items[urlOrd],  timeStamp, items[referrerOrd]);
+				outVal.add(userID, items[urlOrd],  timeStamp, items[timeOrd],  items[referrerOrd]);
    	   			context.write(outKey, outVal);
 			} catch (ParseException ex) {
 				throw new IOException("Failed to parse date time", ex);
@@ -163,6 +163,7 @@ public class SessionExtractor extends Configured implements Tool {
 		private String lastUrl;
 		private long timeOnPage;
 		private long sessionStartTime;
+		private String visitTime;
 
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim.out", "[]");
@@ -177,20 +178,24 @@ public class SessionExtractor extends Configured implements Tool {
     				userID = (String) val.get(0);
     				lastUrl =(String) val.get(1);
     				sessionStartTime = lastTimeStamp = (Long)val.get(2);
+    				visitTime = (String)val.get(3);
     				first = false;
     			} else {
     				timeStamp =  (Long)val.get(2);
     				timeOnPage = (timeStamp - lastTimeStamp) / 1000;
-    				outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
+    				outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + 
+    						visitTime + fieldDelim +  lastUrl + fieldDelim +  timeOnPage);
     				context.write(NullWritable.get(),outVal);
     				
     				lastUrl = (String) val.get(1);
     				lastTimeStamp = timeStamp;
+    				visitTime = (String)val.get(3);
     			}
     		}
 			//last page
 			timeOnPage = 0;
-			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + lastUrl + fieldDelim +  timeOnPage);
+			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + 
+					visitTime + fieldDelim +lastUrl + fieldDelim +  timeOnPage);
 			context.write(NullWritable.get(),outVal);
     		
     	}	

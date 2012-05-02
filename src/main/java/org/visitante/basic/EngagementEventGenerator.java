@@ -35,6 +35,7 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 import org.chombo.util.TextLong;
 import org.chombo.util.Tuple;
 import org.chombo.util.Utility;
@@ -225,4 +226,9 @@ public class EngagementEventGenerator extends Configured implements Tool {
 		
 	}
 	
+    public static void main(String[] args) throws Exception {
+        int exitCode = ToolRunner.run(new EngagementEventGenerator(), args);
+        System.exit(exitCode);
+    }
+
 }
