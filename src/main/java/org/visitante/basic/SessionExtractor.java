@@ -175,21 +175,21 @@ public class SessionExtractor extends Configured implements Tool {
     		boolean first = true;
     		for (Tuple val : values) {
     			if (first) {
-    				userID = (String) val.get(0);
-    				lastUrl =(String) val.get(1);
+    				userID =  val.getString(0);
+    				lastUrl = val.getString(1);
     				sessionStartTime = lastTimeStamp = (Long)val.get(2);
-    				visitTime = (String)val.get(3);
+    				visitTime = val.getString(3);
     				first = false;
     			} else {
-    				timeStamp =  (Long)val.get(2);
+    				timeStamp =  val.getLong(2);
     				timeOnPage = (timeStamp - lastTimeStamp) / 1000;
     				outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + sessionStartTime +  fieldDelim + 
     						visitTime + fieldDelim +  lastUrl + fieldDelim +  timeOnPage);
     				context.write(NullWritable.get(),outVal);
     				
-    				lastUrl = (String) val.get(1);
+    				lastUrl =  val.getString(1);
     				lastTimeStamp = timeStamp;
-    				visitTime = (String)val.get(3);
+    				visitTime = val.getString(3);
     			}
     		}
 			//last page

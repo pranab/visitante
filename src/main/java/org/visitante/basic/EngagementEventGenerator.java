@@ -90,10 +90,10 @@ public class EngagementEventGenerator extends Configured implements Tool {
 		private List<EventPattern> eventPatterns = new ArrayList<EventPattern>();
 		
 		protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelim = context.getConfiguration().get("field.delim.out", "[]");
+        	fieldDelim = context.getConfiguration().get("field.delim.out", ",");
         	
         	//engaement events e.g. page browsed
-        	String[] engageEvents = context.getConfiguration().get("engaement.events").split(",");
+        	String[] engageEvents = context.getConfiguration().get("engagement.events").split(",");
         	for (String engageEvent : engageEvents) {
         		String[] items = engageEvent.split(":");
         		eventPatterns.add(new EventPattern(items));
@@ -107,16 +107,16 @@ public class EngagementEventGenerator extends Configured implements Tool {
     		boolean first = true;
     		for (Tuple val : values) {
     			if (first) {
-    				userID = (String) val.get(0);
-    				lastUrl =(String) val.get(1);
-    				lastTimeStamp = (Long)val.get(2);
+    				userID =  val.getString(0);
+    				lastUrl = val.getString(1);
+    				lastTimeStamp = val.getLong(2);
     				first = false;
     			} else {
-    				timeStamp =  (Long)val.get(2);
+    				timeStamp =  val.getLong(2);
     				timeOnPage = (timeStamp - lastTimeStamp) / 1000;
     				eventFromUrl();
        			    				
-    				lastUrl = (String) val.get(1);
+    				lastUrl =  val.getString(1);
     				lastTimeStamp = timeStamp;
     			}
     		}
@@ -127,7 +127,7 @@ public class EngagementEventGenerator extends Configured implements Tool {
 			EngagementEvent event = null;
 			for (String itemID :  events.keySet()) {
 				event = events.get(itemID);
-				outVal.set(userID + fieldDelim + itemID + fieldDelim +  fieldDelim + event.eventID + fieldDelim + event.value);
+				outVal.set(userID + fieldDelim + itemID + fieldDelim +  event.eventID + fieldDelim + event.value);
 				context.write(NullWritable.get(),outVal);
 			}			
     	}
@@ -136,17 +136,19 @@ public class EngagementEventGenerator extends Configured implements Tool {
     		EngagementEvent event = null;
     		int eventID = 0;
     		int value = 0;
+    		String item  = null;
     		
     		for (EventPattern eventPattern : eventPatterns) {
     			if (eventPattern. isMatched(lastUrl)) {
     				eventID = eventPattern.getEventID();
     				value = eventPattern.getValue();
-    				String item = eventPattern.getMatchedItem();
+    				item = eventPattern.getMatchedItem();
     				if (null != item) {
     					event = events.get(item);
     					if (null != event) {
-    						//more engaging event found for the item
+    						//event already exists for this item
     						if(event.eventID < eventID) {
+        						//more engaging event found for the item
     							event.eventID = eventID;
     							event.value = value;
     						}
@@ -165,6 +167,7 @@ public class EngagementEventGenerator extends Configured implements Tool {
     					for (Map.Entry<String, EngagementEvent>  entry :  events.entrySet()) {
     						event = entry.getValue();
     						if (event.eventID == eventID -1) {
+    							//promote to more engaging event
     							event.eventID = eventID;
     							event.value = value;
     						}
@@ -181,8 +184,6 @@ public class EngagementEventGenerator extends Configured implements Tool {
 		public int eventID;
 		public int value;
 	}
-	
-
 	
 	private static class EventPattern {
 		private int eventID;
