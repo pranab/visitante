@@ -31,7 +31,7 @@ class UserSession
 		
 		r = rand(100)
 		enteredFlow = r < 10
-		completedFlow = r < 5
+		completedFlow = r < 6
 		np = enteredFlow ? (2 + rand(3)) : @numPages;
 		#puts "*** flow ***#{enteredFlow}  #{completedFlow}"
 		
@@ -50,6 +50,17 @@ class UserSession
 			visit = Visit.new(time, page, referrer)
 			@visits << visit
 			time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
+			
+			#if product page visit follow up by add to cart
+			if (page.rindex("product") && rand(10) < 3)
+				referrer = page
+				product = page.split('/')[2]
+				page = "/addToCart/" +  product
+				visit = Visit.new(time, page, referrer)
+				@visits << visit
+				time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
+			end
+			
 			#puts "user visit time #{@userID}  #{time}"
 		end 
 		
@@ -61,7 +72,7 @@ class UserSession
 				time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
 				@visits << visit
 				
-				if (!completedFlow && rand(3) == 0)
+				if (!completedFlow && (rand(3) == 0))
 					break
 				end
 			 
@@ -161,8 +172,9 @@ pageDist = CategoricalField.new(pageDistValues)
 
 #arrival time distribution
 hourDist = NumericalField.new(false,0..4,10,5..8,20,9..14,30,15..16,50,17..18,30,19..20,40,21..23,20)
-#duration distribution
-durationDist = NumericalField.new(false,0..1,10,2..4,20,5..8,30,9..11,40,12..15,50,16..20,40,21..25,20,26..30,10)
+#duration distribution sec
+durationDist = NumericalField.new(false,1..5,50,6..20,150,21..40,400,41..60,200,61..120,150,121..240,300,
+  241..360,600,361..480,900,481..600,700,601..720,500,721..900,300,901..1200,100)
 
 #sample user from user list for the day
 File.open("user.txt", "r") do |infile|
@@ -177,8 +189,9 @@ File.open("user.txt", "r") do |infile|
 			sessionStart = hour * secHour + rand(secHour) - 600
 			
 			#duration = 10 + rand(1200)
-			duration = durationDist.value * 60  + rand(60)
-			duration = duration < 10 ? 10 : duration
+			dval = durationDist.value
+			spread = dval / 10
+			duration = dval  + rand(spread) - spread/2 
 			
 			sessionEnd = sessionStart + duration
 			sessionEnd = sessionEnd < secDay ? sessionEnd : secDay - 1

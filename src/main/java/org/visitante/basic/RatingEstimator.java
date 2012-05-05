@@ -121,6 +121,7 @@ public class RatingEstimator extends Configured implements Tool {
         		userID = key.getFirst().toString();
         		itemID = key.getSecond().toString();
         		maxRating = 0;
+        		timeSpent = 0;
         		for (IntPair val : values) {
         			eventVal =  val.getSecond().get();
         			if (val.getFirst().get() == 1) {
@@ -145,7 +146,8 @@ public class RatingEstimator extends Configured implements Tool {
         		}
         		
         		if (maxRating == 0) {
-        			maxRating = timeSpentMapping.get(timeSpentMapping.size() - 1).getRight();
+        			//off the chart
+        			maxRating = timeSpentMapping.get(timeSpentMapping.size() - 1).getRight() + 1;
         		}
         		
         		switch (outFormat) {

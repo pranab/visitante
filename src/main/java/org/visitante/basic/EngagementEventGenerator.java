@@ -73,7 +73,7 @@ public class EngagementEventGenerator extends Configured implements Tool {
         job.setGroupingComparatorClass(SessionIdGroupComprator.class);
         job.setPartitionerClass(SessionIdPartitioner.class);
 
-        job.setNumReduceTasks(job.getConfiguration().getInt("num.reducer", 1));
+        job.setNumReduceTasks(job.getConfiguration().getInt("ee.num.reducer", 1));
         int status =  job.waitForCompletion(true) ? 0 : 1;
         return status;
 	}

@@ -92,10 +92,11 @@ class NumericalField
 			@min = args[0]
 			@max = args[1]
 		else 
+			values = args.size == 1 ? args[0] : args
 			i = 0;
-			while (i < args.length)
-				val = args[i]
-				count = args[i + 1]
+			while (i < values.length)
+				val = values[i]
+				count = values[i + 1]
 				
 				j = 0
 				done = false
