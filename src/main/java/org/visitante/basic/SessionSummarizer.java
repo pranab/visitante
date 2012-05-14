@@ -88,6 +88,8 @@ public class SessionSummarizer  extends Configured implements Tool {
 		private long timeStart;
 		private long timeEnd;
 		private long timeSpent;
+		private String referrer;
+		private StringBuilder stBld = new  StringBuilder();
 		private static final int FLOW_NOT_ENTERED = 0;
 		private static final int FLOW_ENTERED = 1;
 		private static final int FLOW_COMPLETED = 2;
@@ -102,10 +104,12 @@ public class SessionSummarizer  extends Configured implements Tool {
     		sessionID = key.getFirst().toString();
     		boolean first = true;
     		pages.clear();
+    		stBld.delete(0, stBld.length());
     		for (Tuple val : values) {
     			if (first) {
-    				userID = (String) val.get(0);
+    				userID =  val.getString(0);
     				timeStart = val.getLong(2);
+    				referrer = val.getString(4);
     				first = false;
     			} else {
     				timeEnd = val.getLong(2);
@@ -115,8 +119,13 @@ public class SessionSummarizer  extends Configured implements Tool {
     		lastPage = pages.get(pages.size()-1);
     		checkFlowStatus();
     		timeSpent =  pages.size() > 1 ?   (timeEnd - timeStart) / 1000 : 0;
-			outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + pages.size() +  fieldDelim + timeSpent + 
-					fieldDelim + lastPage + fieldDelim +  flowStat);
+    		stBld.append(sessionID).append(fieldDelim).append(userID).append(fieldDelim).append(pages.size()).
+    			append(fieldDelim).append(timeStart).append(fieldDelim).append(timeSpent).append(fieldDelim).
+    			append(lastPage).append(fieldDelim).append(flowStat).append(fieldDelim).append(referrer);
+    		
+			//outVal.set(sessionID + fieldDelim  +  userID + fieldDelim + pages.size() +  fieldDelim + timeStart +  fieldDelim + timeSpent + 
+			//		fieldDelim + lastPage + fieldDelim +  flowStat + fieldDelim + referrer );
+    		outVal.set(stBld.toString());
 			context.write(NullWritable.get(),outVal);
     	}
     	
