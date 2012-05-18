@@ -107,6 +107,7 @@ public class UserSessionSummary extends Configured implements Tool {
 		private int status;
 		private int count;
 		private int avNumPages;
+		private long avTimeSpent;
 		private StringBuilder stBld = new  StringBuilder();
 		private static final int FLOW_COMPLETED = 2;
 		
@@ -139,8 +140,9 @@ public class UserSessionSummary extends Configured implements Tool {
         		
         		status = status == FLOW_COMPLETED ? 1 : 0;
         		avNumPages = totalPages / count;
+        		avTimeSpent = totalTime / count;
         		stBld.append(userID).append(fieldDelim).append(referrer).append(fieldDelim).append(count).append(fieldDelim).
-        			append(avNumPages).append(fieldDelim).append(status);
+        			append(avNumPages).append(fieldDelim).append(avTimeSpent).append(fieldDelim).append(status);
         		
         		outVal.set(stBld.toString());
     			context.write(NullWritable.get(),outVal);
