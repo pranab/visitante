@@ -37,6 +37,10 @@ import org.chombo.util.Utility;
 import org.visitante.basic.SessionExtractor.SessionIdGroupComprator;
 import org.visitante.basic.SessionExtractor.SessionIdPartitioner;
 
+/**
+ * @author pranab
+ *
+ */
 public class UserSessionSummary extends Configured implements Tool {
 
 	@Override
@@ -91,7 +95,7 @@ public class UserSessionSummary extends Configured implements Tool {
 			outKey.set(userID, timeStart);
             
 			outVal.initialize();
-			outVal.add( items[0], new Integer(items[2]), new Integer( items[4]),  items[7], new Integer(items[6]));
+			outVal.add( items[0], new Integer(items[2]), new Integer( items[4]),  items[7], new Integer(items[6]), timeStart);
 	   		context.write(outKey, outVal);
        }
 
@@ -110,6 +114,10 @@ public class UserSessionSummary extends Configured implements Tool {
 		private long avTimeSpent;
 		private StringBuilder stBld = new  StringBuilder();
 		private static final int FLOW_COMPLETED = 2;
+		private int countToConversion;
+		private long lastSessionStartTime;
+		private long totalInBetweenSessionTime;
+		private long avInBetweenSessionTime;
 		
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim.out", ",");
@@ -122,27 +130,41 @@ public class UserSessionSummary extends Configured implements Tool {
         		totalPages = 0;
         		totalTime = 0;
         		count = 0;
+        		countToConversion = 0;
+        		totalInBetweenSessionTime = 0;
+        		lastSessionStartTime = 0;
+        		avInBetweenSessionTime = 0;
         		stBld.delete(0, stBld.length());
+        		
+        		//all sessions
         		for (Tuple val : values) {
         			if (first) {
         				referrer =  val.getString(3);
+        				lastSessionStartTime = val.getLong(5);
         				first = false;
         			}
         			
         			totalPages += val.getInt(1);
         			totalTime  += val.getInt(2);
-        			++count;
+        			totalInBetweenSessionTime +=  val.getLong(5) - lastSessionStartTime;
+       				lastSessionStartTime = val.getLong(5);
+       			    ++count;
         			status = val.getInt(4);
         			if (status == FLOW_COMPLETED ) {
-        				break;
+        				countToConversion = count;
+        				//break;
         			}
         		}  
         		
         		status = status == FLOW_COMPLETED ? 1 : 0;
         		avNumPages = totalPages / count;
         		avTimeSpent = totalTime / count;
-        		stBld.append(userID).append(fieldDelim).append(referrer).append(fieldDelim).append(count).append(fieldDelim).
-        			append(avNumPages).append(fieldDelim).append(avTimeSpent).append(fieldDelim).append(status);
+        		if (count > 1) {
+        			avInBetweenSessionTime = totalInBetweenSessionTime / (count -1);
+        		}
+        		stBld.append(userID).append(fieldDelim).append(referrer).append(fieldDelim).append(countToConversion).append(fieldDelim).
+        			append(avNumPages).append(fieldDelim).append(avTimeSpent).append(fieldDelim).append(status).
+        			append(fieldDelim).append(count).append(fieldDelim).append(avInBetweenSessionTime);
         		
         		outVal.set(stBld.toString());
     			context.write(NullWritable.get(),outVal);

@@ -45,6 +45,10 @@ import org.chombo.util.Tuple;
 import org.chombo.util.Utility;
 
 
+/**
+ * @author pranab
+ *
+ */
 public class SessionExtractor extends Configured implements Tool {
 
 	@Override
@@ -78,6 +82,10 @@ public class SessionExtractor extends Configured implements Tool {
         return status;
 	}
 	
+	/**
+	 * @author pranab
+	 *
+	 */
 	public static class SessionMapper extends Mapper<LongWritable, Text, TextLong, Tuple> {
 		private String[] items;
 		private TextLong outKey = new TextLong();
@@ -152,6 +160,10 @@ public class SessionExtractor extends Configured implements Tool {
         
     }	
 	
+	/**
+	 * @author pranab
+	 *
+	 */
 	public static class SessionReducer extends Reducer<TextLong, Tuple, NullWritable, Text> {
 		private Text outVal = new Text();
 		private StringBuilder stBld;
