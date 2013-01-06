@@ -1,3 +1,19 @@
+Introduction
+============
+The goal of visitante is to calculate web analytic metric as defined by Avinash Kaushik
+(http://www.kaushik.net/avinash/) on thew Hadoop platform
+
+
+Blogs
+=====
+The following blogs of mine are good source of details of visitante
+
+http://pkghosh.wordpress.com/2012/06/05/big-web-analytic/
+http://pkghosh.wordpress.com/2012/08/10/big-web-checkout-abandonment/
+
+
+Hadoop Jobs
+===========
 Set of Hadoop based tools for web analytis. Currently includes the following
 
 - SessionExtractor map reduce which processes w3C compliant web log files and outputs
