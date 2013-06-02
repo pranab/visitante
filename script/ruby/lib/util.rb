@@ -181,3 +181,26 @@ class NumericalField
 	end
 end
 
+class NumericalFieldRange
+	def initialize(*args)
+		@dist = []
+		i = 0
+		while (i < args.length)
+			val = args[i]
+			count = args[i + 1]
+			1.upto count do
+				@dist << val
+			end
+			i = i + 2
+		end
+	end
+	
+	def value
+		val = @dist[rand(@dist.length)]
+		if (val.max  > val.min)
+			val.min + rand(val.max - val.min)
+		else
+			val.min
+		end
+	end
+end
