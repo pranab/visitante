@@ -28,3 +28,11 @@ def selectRandomSubListFromList(list, num):
 			selSet.add(sel)
 			selList.append(sel)		
 	return selList
+	
+def genIpAddress():
+	i1 = randint(0,256)
+	i2 = randint(0,256)
+	i3 = randint(0,256)
+	i4 = randint(0,256)
+	ip = "%d.%d.%d.%d" %(i1,i2,i3,i4)
+	return ip
