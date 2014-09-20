@@ -17,9 +17,12 @@
 
 package org.visitante.realtime;
 
+import org.chombo.util.ConfigUtility;
 import org.chombo.util.RealtimeUtil;
 
 import backtype.storm.Config;
+import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.tuple.Fields;
 
 /**
  * @author pranab
@@ -42,5 +45,32 @@ public class VisitTopology {
     	String topologyName = args[0];
     	String configFilePath = args[1];
     	Config conf = RealtimeUtil.buildStormConfig(configFilePath);
+    	
+    	//spout
+        TopologyBuilder builder = new TopologyBuilder();
+        int spoutThreads = ConfigUtility.getInt(conf, "spout.threads", 1);
+        VisitDepthSpout spout  = new VisitDepthSpout();
+        spout.withTupleFields(VisitTopology.SESSION_ID, VisitTopology.VISIT_TIME, VisitTopology.VISIT_URL);
+        builder.setSpout("visitDepthRedisSpout", spout, spoutThreads);
+       
+        //visit session bolt
+        int visSesstickFreqInSec = ConfigUtility.getInt(conf, "visit.session.tick.freq.sec", 1);
+        VisitSessionBolt viSessBolt = new VisitSessionBolt(visSesstickFreqInSec);
+        viSessBolt.withTupleFields(VisitTopology.PAGE_COUNT);
+        int boltThreads = ConfigUtility.getInt(conf, "visit.session.bolt.threads", 1);
+        builder.
+        	setBolt("visitSessionBolt", viSessBolt, boltThreads).
+        	fieldsGrouping("visitDepthRedisSpout", new Fields(VisitTopology.SESSION_ID));
+        
+        //visit depth bolt
+        int visDepthtickFreqInSec = ConfigUtility.getInt(conf, "visit.depth.tick.freq.sec", 1);
+        VisitDepthBolt  viDepthBolt = new VisitDepthBolt(visDepthtickFreqInSec);
+        boltThreads = ConfigUtility.getInt(conf, "visit.depth.bolt.threads", 1);
+        builder.
+    		setBolt("visitDepthBolt", viDepthBolt, boltThreads).
+    		shuffleGrouping("visitSessionBolt");
+        
+        //submit
+        RealtimeUtil.submitStormTopology(topologyName, conf,  builder);
     }	
 }
