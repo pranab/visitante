@@ -29,6 +29,7 @@ public class VisitTopology {
 	public static final String SESSION_ID = "sessionID";
 	public static final String VISIT_TIME = "visitTime";
 	public static final String VISIT_URL = "visitUrl";
+	public static final String PAGE_COUNT = "pageCount";
 	
     /**
      * @param args

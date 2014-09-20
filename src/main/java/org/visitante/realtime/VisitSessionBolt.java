@@ -33,6 +33,11 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
+/**
+ * Tracks pages visited for a session
+ * @author pranab
+ *
+ */
 public class VisitSessionBolt extends  GenericBolt {
 	private static final long serialVersionUID = -4001182742881831041L;
 	private int tickFrequencyInSeconds;
@@ -71,8 +76,8 @@ public class VisitSessionBolt extends  GenericBolt {
 		outputMessages.clear();
 		
 		if (isTickTuple(input)) {
-			LOG.info("got tick tuple ");
 			//find sessions that have timed out
+			LOG.info("got tick tuple ");
 			expiredSessions.clear();
 			long expiryTime = System.currentTimeMillis() - sessionTimeout * 1000;
 			for (String sessionID : sessions.keySet()) {
@@ -109,8 +114,7 @@ public class VisitSessionBolt extends  GenericBolt {
 
 	@Override
 	public List<MessageHolder> getOutput() {
-		// TODO Auto-generated method stub
-		return null;
+		return outputMessages;
 	}
 
 }
