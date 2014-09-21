@@ -54,8 +54,8 @@ public class VisitTopology {
         builder.setSpout("visitDepthRedisSpout", spout, spoutThreads);
        
         //visit session bolt
-        int visSesstickFreqInSec = ConfigUtility.getInt(conf, "visit.session.tick.freq.sec", 1);
-        VisitSessionBolt viSessBolt = new VisitSessionBolt(visSesstickFreqInSec);
+        int visSessTickFreqInSec = ConfigUtility.getInt(conf, "visit.session.tick.freq.sec", 1);
+        VisitSessionBolt viSessBolt = new VisitSessionBolt(visSessTickFreqInSec);
         viSessBolt.withTupleFields(VisitTopology.PAGE_COUNT);
         int boltThreads = ConfigUtility.getInt(conf, "visit.session.bolt.threads", 1);
         builder.
@@ -63,8 +63,8 @@ public class VisitTopology {
         	fieldsGrouping("visitDepthRedisSpout", new Fields(VisitTopology.SESSION_ID));
         
         //visit depth bolt
-        int visDepthtickFreqInSec = ConfigUtility.getInt(conf, "visit.depth.tick.freq.sec", 1);
-        VisitDepthBolt  viDepthBolt = new VisitDepthBolt(visDepthtickFreqInSec);
+        int visDepthTickFreqInSec = ConfigUtility.getInt(conf, "visit.depth.tick.freq.sec", 1);
+        VisitDepthBolt  viDepthBolt = new VisitDepthBolt(visDepthTickFreqInSec);
         boltThreads = ConfigUtility.getInt(conf, "visit.depth.bolt.threads", 1);
         builder.
     		setBolt("visitDepthBolt", viDepthBolt, boltThreads).

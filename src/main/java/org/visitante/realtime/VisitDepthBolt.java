@@ -27,8 +27,11 @@ import org.apache.log4j.Logger;
 import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
 import org.chombo.util.ConfigUtility;
+import org.chombo.util.Utility;
 import org.hoidla.window.BiasedReservoirWindow;
+import org.chombo.util.RealtimeUtil;
 
+import redis.clients.jedis.Jedis;
 import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
@@ -44,6 +47,9 @@ public class VisitDepthBolt extends  GenericBolt {
 	private int windowSize;
 	private BiasedReservoirWindow<Integer> window;
 	private String  resultType;
+	private Jedis jedis;
+	private String vistDepthStatQueue;
+
 	private static final Logger LOG = Logger.getLogger(VisitDepthBolt.class);
 	
 	public VisitDepthBolt(int tickFrequencyInSeconds) {
@@ -67,6 +73,9 @@ public class VisitDepthBolt extends  GenericBolt {
 		windowSize = ConfigUtility.getInt(stormConf, "window.size");
 		window = new BiasedReservoirWindow<Integer>(windowSize); 
 		resultType = ConfigUtility.getString(stormConf, "result.type");
+		
+		jedis = RealtimeUtil.buildRedisClient(stormConf);
+		vistDepthStatQueue = ConfigUtility.getString(stormConf, "visit.depth.stat.queue");
 	}
 
 	@Override
@@ -75,29 +84,35 @@ public class VisitDepthBolt extends  GenericBolt {
 		outputMessages.clear();
 		
 		if (isTickTuple(input)) {
-			if (resultType.equals("bounceRate")) {
-				//bounce rate
-				int bounceCount = 0;
-				Iterator<Integer> it = window.getIterator();
-				while(it.hasNext()) {
-					if (it.next() == 1) {
-						++bounceCount;
+			if (window.isFull()) {
+				if (resultType.equals("bounceRate")) {
+					//bounce rate
+					int bounceCount = 0;
+					Iterator<Integer> it = window.getIterator();
+					while(it.hasNext()) {
+						if (it.next() == 1) {
+							++bounceCount;
+						}
 					}
+					int bounceRate = (bounceCount * 100) / windowSize;
+					jedis.lpush(vistDepthStatQueue, ""+bounceRate);
+				} else {
+					//depth distribution
+					TreeMap<Integer, Integer> depthDistr = new TreeMap<Integer, Integer>();
+					Iterator<Integer> it = window.getIterator();
+					while(it.hasNext()) {
+						Integer depth = it.next();
+						Integer count = depthDistr.get(depth);
+						if (null == count) {
+							depthDistr.put(depth, 1);
+						} else {
+							depthDistr.put(depth, count+1);
+						}
+					}		
+					//serialize and write to queue
+					String distr = Utility.serializeMap(depthDistr, ",", ":");
+					jedis.lpush(vistDepthStatQueue, distr);
 				}
-				int bounceRate = (bounceCount * 100) / windowSize;
-			} else {
-				//depth distribution
-				TreeMap<Integer, Integer> depthDistr = new TreeMap<Integer, Integer>();
-				Iterator<Integer> it = window.getIterator();
-				while(it.hasNext()) {
-					Integer depth = it.next();
-					Integer count = depthDistr.get(depth);
-					if (null == count) {
-						depthDistr.put(depth, 1);
-					} else {
-						depthDistr.put(depth, count+1);
-					}
-				}				
 			}
 		} else {
 			int pageCount = input.getIntegerByField(VisitTopology.PAGE_COUNT);
@@ -108,7 +123,6 @@ public class VisitDepthBolt extends  GenericBolt {
 
 	@Override
 	public List<MessageHolder> getOutput() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
