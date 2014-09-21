@@ -15,14 +15,14 @@ The following blogs of mine are good source of details of visitante
 
 ## Solutions
 * Hadoop based batch analytic for 
-..* num of pages visited
-..* total time spent 
-..* last page visited
-..* flow status (e.g., whether checkout flow was entered, entered but not completed or completed)
+    * num of pages visited
+    * total time spent 
+    * last page visited
+    * flow status (e.g., whether checkout flow was entered, entered but not completed or completed)
 
 * Storm based real time analytic for
-..* bounce rate
-..* visit depth distribution
+    * bounce rate
+    * visit depth distribution
 
 
 
