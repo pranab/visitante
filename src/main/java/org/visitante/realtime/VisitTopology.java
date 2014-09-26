@@ -32,6 +32,7 @@ public class VisitTopology {
 	public static final String SESSION_ID = "sessionID";
 	public static final String VISIT_TIME = "visitTime";
 	public static final String VISIT_URL = "visitUrl";
+	public static final String PAGE_ID = "pageId";
 	public static final String PAGE_COUNT = "pageCount";
 	
     /**
@@ -56,7 +57,7 @@ public class VisitTopology {
         //visit session bolt
         int visSessTickFreqInSec = ConfigUtility.getInt(conf, "visit.session.tick.freq.sec", 1);
         VisitSessionBolt viSessBolt = new VisitSessionBolt(visSessTickFreqInSec);
-        viSessBolt.withTupleFields(VisitTopology.PAGE_COUNT);
+        viSessBolt.withTupleFields(VisitTopology.PAGE_ID, VisitTopology.PAGE_COUNT);
         int boltThreads = ConfigUtility.getInt(conf, "visit.session.bolt.threads", 1);
         builder.
         	setBolt("visitSessionBolt", viSessBolt, boltThreads).

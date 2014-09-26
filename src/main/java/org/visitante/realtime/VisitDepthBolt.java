@@ -17,6 +17,7 @@
 
 package org.visitante.realtime;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,7 @@ public class VisitDepthBolt extends  GenericBolt {
 	private int tickFrequencyInSeconds;
 	private int windowSize;
 	private BiasedReservoirWindow<Integer> window;
+	private Map<String, BiasedReservoirWindow<Integer>> windows = new HashMap<String, BiasedReservoirWindow<Integer>>();
 	private String  resultType;
 	private Jedis jedis;
 	private String vistDepthStatQueue;
@@ -71,7 +73,6 @@ public class VisitDepthBolt extends  GenericBolt {
 			LOG.setLevel(Level.INFO);
 		}
 		windowSize = ConfigUtility.getInt(stormConf, "window.size");
-		window = new BiasedReservoirWindow<Integer>(windowSize); 
 		resultType = ConfigUtility.getString(stormConf, "result.type");
 		
 		jedis = RealtimeUtil.buildRedisClient(stormConf);
@@ -84,38 +85,47 @@ public class VisitDepthBolt extends  GenericBolt {
 		outputMessages.clear();
 		
 		if (isTickTuple(input)) {
-			if (window.isFull()) {
-				if (resultType.equals("bounceRate")) {
-					//bounce rate
-					int bounceCount = 0;
-					Iterator<Integer> it = window.getIterator();
-					while(it.hasNext()) {
-						if (it.next() == 1) {
-							++bounceCount;
+			for (String pageId : windows.keySet()) {
+				window = windows.get(pageId);
+				if (window.isFull()) {
+					if (resultType.equals("bounceRate")) {
+						//bounce rate
+						int bounceCount = 0;
+						Iterator<Integer> it = window.getIterator();
+						while(it.hasNext()) {
+							if (it.next() == 1) {
+								++bounceCount;
+							}
 						}
+						int bounceRate = (bounceCount * 100) / windowSize;
+						jedis.lpush(vistDepthStatQueue, pageId + ":" + bounceRate);
+					} else {
+						//depth distribution
+						TreeMap<Integer, Integer> depthDistr = new TreeMap<Integer, Integer>();
+						Iterator<Integer> it = window.getIterator();
+						while(it.hasNext()) {
+							Integer depth = it.next();
+							Integer count = depthDistr.get(depth);
+							if (null == count) {
+								depthDistr.put(depth, 1);
+							} else {
+								depthDistr.put(depth, count+1);
+							}
+						}		
+						//serialize and write to queue
+						String distr = Utility.serializeMap(depthDistr, ",", ":");
+						jedis.lpush(vistDepthStatQueue, pageId + ":" + distr);
 					}
-					int bounceRate = (bounceCount * 100) / windowSize;
-					jedis.lpush(vistDepthStatQueue, ""+bounceRate);
-				} else {
-					//depth distribution
-					TreeMap<Integer, Integer> depthDistr = new TreeMap<Integer, Integer>();
-					Iterator<Integer> it = window.getIterator();
-					while(it.hasNext()) {
-						Integer depth = it.next();
-						Integer count = depthDistr.get(depth);
-						if (null == count) {
-							depthDistr.put(depth, 1);
-						} else {
-							depthDistr.put(depth, count+1);
-						}
-					}		
-					//serialize and write to queue
-					String distr = Utility.serializeMap(depthDistr, ",", ":");
-					jedis.lpush(vistDepthStatQueue, distr);
 				}
 			}
 		} else {
+			String pageId = input.getStringByField(VisitTopology.PAGE_ID);
 			int pageCount = input.getIntegerByField(VisitTopology.PAGE_COUNT);
+			window = windows.get(pageId);
+			if (null == window) {
+				window = new BiasedReservoirWindow<Integer>(windowSize); 
+				windows.put(pageId, window);
+			}
 			window.add(pageCount);
 		}
 		return status;

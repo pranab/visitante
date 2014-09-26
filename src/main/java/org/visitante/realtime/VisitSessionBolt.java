@@ -21,12 +21,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
 import org.chombo.util.ConfigUtility;
+import org.chombo.util.Pair;
 
 import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
@@ -41,8 +44,10 @@ import backtype.storm.tuple.Values;
 public class VisitSessionBolt extends  GenericBolt {
 	private static final long serialVersionUID = -4001182742881831041L;
 	private int tickFrequencyInSeconds;
-	private Map<String, List<Long>> sessions = new HashMap<String, List<Long>>();
+	private Map<String, SessionDetail> sessions = new HashMap<String, SessionDetail>();
 	private String logOutPattern;
+	private String pageIdPatternStr;
+	private Pattern pageIdPattern;
 	private long sessionTimeout;
 	private MessageHolder msg;
 	private List<String> expiredSessions = new ArrayList<String>();
@@ -66,6 +71,9 @@ public class VisitSessionBolt extends  GenericBolt {
 		if (debugOn) {
 			LOG.setLevel(Level.INFO);
 		}
+		pageIdPatternStr = ConfigUtility.getString(stormConf, "page.id.pattern");
+		pageIdPattern = Pattern.compile(pageIdPatternStr);
+		
 		logOutPattern = ConfigUtility.getString(stormConf, "logOut.pattern");
 		sessionTimeout = ConfigUtility.getLong(stormConf, "session.timeOut");
 	}
@@ -81,11 +89,15 @@ public class VisitSessionBolt extends  GenericBolt {
 			expiredSessions.clear();
 			long expiryTime = System.currentTimeMillis() - sessionTimeout * 1000;
 			for (String sessionID : sessions.keySet()) {
-				List<Long> timeStamps = sessions.get(sessionID);
+				SessionDetail sessDetail = sessions.get(sessionID);
+				List<Long> timeStamps = sessDetail.getLeft();
 				if ((timeStamps.get(timeStamps.size()-1)) < expiryTime) {
-					msg = new MessageHolder();
-					msg.setMessage(new Values(timeStamps.size()));
-					outputMessages.add(msg);
+					String pageId = sessDetail.getRight();
+					if (pageId != null) {
+						msg = new MessageHolder();
+						msg.setMessage(new Values(timeStamps.size()));
+						outputMessages.add(msg);
+					}
 					expiredSessions.add(sessionID);
 				}
 			}
@@ -96,16 +108,29 @@ public class VisitSessionBolt extends  GenericBolt {
 			String sessionID = input.getStringByField(VisitTopology.SESSION_ID);
 			long visitTime = input.getLongByField(VisitTopology.VISIT_TIME);
 			String url = input.getStringByField(VisitTopology.VISIT_URL);
-			List<Long> timeStamps = sessions.get(sessionID);
-			if (null == timeStamps) {
+			Matcher matcher = pageIdPattern.matcher(url);
+			String pageId = matcher.find()? matcher.group(1) : null;
+			SessionDetail sessDetail = sessions.get(sessionID);
+			List<Long>  timeStamps = null;
+			if (null == sessDetail) {
+				//new session
 				timeStamps = new ArrayList<Long>();
+				sessions.put(sessionID, new SessionDetail(timeStamps, pageId));
+			} else {
+				timeStamps = sessDetail.getLeft();
+				if (null != pageId) {
+					sessDetail.setRight(pageId);
+				}
 			}
 			timeStamps.add(visitTime);
 			if (url.contains(logOutPattern)) {
 				//send page count
-				msg = new MessageHolder();
-				msg.setMessage(new Values(timeStamps.size()));
-				outputMessages.add(msg);
+				pageId = sessDetail.getRight();
+				if (null != pageId) {
+					msg = new MessageHolder();
+					msg.setMessage(new Values(pageId,timeStamps.size()));
+					outputMessages.add(msg);
+				}
 				sessions.remove(sessionID);
 			}
 		}
@@ -115,6 +140,12 @@ public class VisitSessionBolt extends  GenericBolt {
 	@Override
 	public List<MessageHolder> getOutput() {
 		return outputMessages;
+	}
+	
+	public static class SessionDetail extends Pair<List<Long>, String> {
+		public SessionDetail(List<Long> timeStamps, String pageId) {
+			super(timeStamps, pageId);
+		}
 	}
 
 }
