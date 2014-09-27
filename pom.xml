@@ -115,9 +115,10 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/ma
         </dependency>
         
   		<dependency>
-			<groupId>storm</groupId>
-			<artifactId>storm</artifactId>
-			<version>0.8.2</version>
+			<groupId>org.apache.storm</groupId>
+			<artifactId>storm-core</artifactId>
+			<version>0.9.2-incubating</version>
+			<scope>provided</scope>
 		</dependency>   
         
 		<dependency>
@@ -139,7 +140,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/ma
     		<type>jar</type>
     		<scope>compile</scope>
 		</dependency>
-        
+		
+		<dependency> 
+		  <groupId>ch.qos.logback</groupId>
+		  <artifactId>logback-classic</artifactId>
+		  <version>1.0.13</version>
+		</dependency>		
     </dependencies>
 
     <repositories>
