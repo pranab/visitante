@@ -14,13 +14,14 @@ pageCountMax = 15
 items = []
 pagesGET = ["/home","/shoppingCart","/product","/onSale","/brands", "/about"]
 pagesPOST = ["/addToCart","/checkOut","/billing","/confirmShipping","/placeOrder"]
+homePages = ["home1", "home2", "home3"]
 rc = redis.StrictRedis(host='localhost', port=6379, db=0)
 epochInterval = 10
 
 #Fields: date time c-ip   cs-method cs-uri-stem  sc-status   cs(User-Agent) cs(Referrer) 
 #2002-05-24 20:18:01 172.224.24.114  GET /Default.htm - 200  Mozilla/4.0+(compatible;+MSIE+5.01;+Windows+2000+Server) http://64.224.24.114/
 
-def genLogs(threadName, items, maxPages, pagesGET, pagesPOST):
+def genLogs(threadName, items, maxPages, pagesGET, pagesPOST, homePages):
 	numItemsForThisUser = randint(10, 20)
 	itemsForThisUser = selectRandomSubListFromList(items, numItemsForThisUser)
 	session = str(uuid.uuid1())
@@ -28,7 +29,7 @@ def genLogs(threadName, items, maxPages, pagesGET, pagesPOST):
 	status = 200
 	
 	method = "GET"
-	page = "/home" + "?sessionid=" + session
+	page = "/" + selectRandomFromList(homePages) + "?sessionid=" + session
 	createLog(page, ipAddress,  method, status)
 	if (maxPages == 1):
 		return
@@ -98,6 +99,22 @@ def createLog(page, ipAddress,  method, status):
 	print log
 	rc.lpush("logQueue", log)
 
+def readLogQueue():
+	while True:
+		line = rc.rpop("logQueue")
+		if line is not None:
+			print line
+		else:
+			break
+
+def readStatQueue():
+	while True:
+		line = rc.rpop("visitStatQueue")
+		if line is not None:
+			print line
+		else:
+			break
+
 #command processing
 op = sys.argv[1]
 if (op == "genLogs"):	            
@@ -123,11 +140,16 @@ if (op == "genLogs"):
 				maxPage = 1
 			else:
 				maxPage = randint(2, pageCountMax)
-   			t = threading.Thread(target=genLogs, args=(threadName, items,maxPage,pagesGET,pagesPOST, ))
+   			t = threading.Thread(target=genLogs, args=(threadName, items,maxPage,pagesGET,pagesPOST,homePages ))
    			t.start()
 			time.sleep(randint(6,12))
 
 	except:
    		print "Error: unable to start thread"
 
+elif (op == "readLogQueue"):
+	readLogQueue()
+
+elif (op == "readStatQueue"):
+	readStatQueue()
 

@@ -25,8 +25,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.chombo.storm.GenericSpout;
 import org.chombo.storm.MessageHolder;
 import org.chombo.util.ConfigUtility;
@@ -44,8 +44,8 @@ public class VisitDepthSpout extends GenericSpout {
 	private int dateOrd;
 	private int timeOrd;
 	private int urlOrd;
-	private Pattern pattern = Pattern.compile(".+?sessionid=(\\S{36}).+");
-	private static final Logger LOG = Logger.getLogger(VisitDepthSpout.class);
+	private Pattern pattern;
+	private static final Logger LOG = LoggerFactory.getLogger(VisitDepthSpout.class);
 	
 	@Override
 	public void close() {
@@ -79,9 +79,9 @@ public class VisitDepthSpout extends GenericSpout {
 		timeOrd = ConfigUtility.getInt(stormConf, "time.ordinal");
 		urlOrd = ConfigUtility.getInt(stormConf, "url.ordinal");
 		seesionRegex = ConfigUtility.getString(stormConf, "session.regex");
+		pattern = Pattern.compile(seesionRegex);
 		debugOn = ConfigUtility.getBoolean(stormConf,"debug.on", false);
 		if (debugOn) {
-			LOG.setLevel(Level.INFO);;
 		}
 	}
 

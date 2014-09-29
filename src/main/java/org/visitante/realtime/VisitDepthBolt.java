@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
 import org.chombo.util.ConfigUtility;
@@ -52,7 +52,7 @@ public class VisitDepthBolt extends  GenericBolt {
 	private Jedis jedis;
 	private String vistDepthStatQueue;
 
-	private static final Logger LOG = Logger.getLogger(VisitDepthBolt.class);
+	private static final Logger LOG = LoggerFactory.getLogger(VisitDepthBolt.class);
 	
 	public VisitDepthBolt(int tickFrequencyInSeconds) {
 		super();
@@ -70,7 +70,6 @@ public class VisitDepthBolt extends  GenericBolt {
 	public void intialize(Map stormConf, TopologyContext context) {
 		debugOn = ConfigUtility.getBoolean(stormConf,"debug.on", false);
 		if (debugOn) {
-			LOG.setLevel(Level.INFO);
 		}
 		windowSize = ConfigUtility.getInt(stormConf, "window.size");
 		resultType = ConfigUtility.getString(stormConf, "result.type");

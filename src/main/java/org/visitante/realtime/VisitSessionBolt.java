@@ -24,8 +24,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
 import org.chombo.util.ConfigUtility;
@@ -51,7 +51,7 @@ public class VisitSessionBolt extends  GenericBolt {
 	private long sessionTimeout;
 	private MessageHolder msg;
 	private List<String> expiredSessions = new ArrayList<String>();
-	private static final Logger LOG = Logger.getLogger(VisitSessionBolt.class);
+	private static final Logger LOG = LoggerFactory.getLogger(VisitSessionBolt.class);
 
 	public VisitSessionBolt(int tickFrequencyInSeconds) {
 		super();
@@ -69,7 +69,6 @@ public class VisitSessionBolt extends  GenericBolt {
 	public void intialize(Map stormConf, TopologyContext context) {
 		debugOn = ConfigUtility.getBoolean(stormConf,"debug.on", false);
 		if (debugOn) {
-			LOG.setLevel(Level.INFO);
 		}
 		pageIdPatternStr = ConfigUtility.getString(stormConf, "page.id.pattern");
 		pageIdPattern = Pattern.compile(pageIdPatternStr);
@@ -95,7 +94,7 @@ public class VisitSessionBolt extends  GenericBolt {
 					String pageId = sessDetail.getRight();
 					if (pageId != null) {
 						msg = new MessageHolder();
-						msg.setMessage(new Values(timeStamps.size()));
+						msg.setMessage(new Values(pageId, timeStamps.size()));
 						outputMessages.add(msg);
 					}
 					expiredSessions.add(sessionID);
@@ -115,7 +114,8 @@ public class VisitSessionBolt extends  GenericBolt {
 			if (null == sessDetail) {
 				//new session
 				timeStamps = new ArrayList<Long>();
-				sessions.put(sessionID, new SessionDetail(timeStamps, pageId));
+				sessDetail = new SessionDetail(timeStamps, pageId);
+				sessions.put(sessionID, sessDetail);
 			} else {
 				timeStamps = sessDetail.getLeft();
 				if (null != pageId) {

@@ -1,0 +1,15 @@
+<project name="visitante_for_storm" default="uber-jar" basedir=".">
+<target name="uber-jar">
+    <echo>Packaging visitante into a single uber JAR</echo>
+	<jar destfile="uber-visitante-1.0.jar">
+		<zipgroupfileset dir="/Users/pranab/Projects/lib" 
+			includes="jedis-2.2.1.jar,commons-pool-1.5.5.jar,guava-14.0.1.jar,jackson-core-asl-1.9.13.jar,jackson-mapper-asl-1.9.13.jar" /> 
+		<zipgroupfileset dir="/Users/pranab/Projects/visitante/target" 
+			includes="visitante-1.0.jar, " /> 
+		<zipgroupfileset dir="/Users/pranab/Projects/chombo/target" 
+			includes="chombo-1.0.jar, " /> 
+		<zipgroupfileset dir="/Users/pranab/Projects/hoidla/target" 
+			includes="hoidla-1.0.jar, " /> 
+	</jar>
+</target>
+</project>
