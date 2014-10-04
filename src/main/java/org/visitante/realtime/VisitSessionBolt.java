@@ -91,11 +91,13 @@ public class VisitSessionBolt extends  GenericBolt {
 				SessionDetail sessDetail = sessions.get(sessionID);
 				List<Long> timeStamps = sessDetail.getLeft();
 				if ((timeStamps.get(timeStamps.size()-1)) < expiryTime) {
+					LOG.debug("found expired session");
 					String pageId = sessDetail.getRight();
 					if (pageId != null) {
 						msg = new MessageHolder();
 						msg.setMessage(new Values(pageId, timeStamps.size()));
 						outputMessages.add(msg);
+						LOG.debug("sent pageID:" + pageId + " session depth: " + timeStamps.size());
 					}
 					expiredSessions.add(sessionID);
 				}
@@ -109,6 +111,7 @@ public class VisitSessionBolt extends  GenericBolt {
 			String url = input.getStringByField(VisitTopology.VISIT_URL);
 			Matcher matcher = pageIdPattern.matcher(url);
 			String pageId = matcher.find()? matcher.group(1) : null;
+			LOG.debug("pageId:" + pageId);
 			SessionDetail sessDetail = sessions.get(sessionID);
 			List<Long>  timeStamps = null;
 			if (null == sessDetail) {
@@ -116,20 +119,24 @@ public class VisitSessionBolt extends  GenericBolt {
 				timeStamps = new ArrayList<Long>();
 				sessDetail = new SessionDetail(timeStamps, pageId);
 				sessions.put(sessionID, sessDetail);
+				LOG.debug("new session pageId:" + pageId);
 			} else {
 				timeStamps = sessDetail.getLeft();
 				if (null != pageId) {
 					sessDetail.setRight(pageId);
+					LOG.debug("existing session pageId:" + pageId);
 				}
 			}
 			timeStamps.add(visitTime);
 			if (url.contains(logOutPattern)) {
 				//send page count
+				LOG.debug("got logout page");
 				pageId = sessDetail.getRight();
 				if (null != pageId) {
 					msg = new MessageHolder();
 					msg.setMessage(new Values(pageId,timeStamps.size()));
 					outputMessages.add(msg);
+					LOG.debug("sent pageID:" + pageId + " session depth: " + timeStamps.size());
 				}
 				sessions.remove(sessionID);
 			}

@@ -46,6 +46,7 @@ import backtype.storm.tuple.Tuple;
 public class VisitDepthBolt extends  GenericBolt {
 	private int tickFrequencyInSeconds;
 	private int windowSize;
+	private int minWindowSizeForStat;
 	private BiasedReservoirWindow<Integer> window;
 	private Map<String, BiasedReservoirWindow<Integer>> windows = new HashMap<String, BiasedReservoirWindow<Integer>>();
 	private String  resultType;
@@ -72,6 +73,7 @@ public class VisitDepthBolt extends  GenericBolt {
 		if (debugOn) {
 		}
 		windowSize = ConfigUtility.getInt(stormConf, "window.size");
+		minWindowSizeForStat = ConfigUtility.getInt(stormConf, "min.window.size.for.stat", (windowSize * 3) / 4);
 		resultType = ConfigUtility.getString(stormConf, "result.type");
 		
 		jedis = RealtimeUtil.buildRedisClient(stormConf);
@@ -86,7 +88,9 @@ public class VisitDepthBolt extends  GenericBolt {
 		if (isTickTuple(input)) {
 			for (String pageId : windows.keySet()) {
 				window = windows.get(pageId);
-				if (window.isFull()) {
+				LOG.debug("got tick tuple page ID :" + pageId + " window size:" + window.size());
+				if (window.size() >= minWindowSizeForStat) {
+					LOG.debug("going to do stat");
 					if (resultType.equals("bounceRate")) {
 						//bounce rate
 						int bounceCount = 0;
@@ -96,7 +100,8 @@ public class VisitDepthBolt extends  GenericBolt {
 								++bounceCount;
 							}
 						}
-						int bounceRate = (bounceCount * 100) / windowSize;
+						int bounceRate = (bounceCount * 100) / window.size();
+						LOG.debug("bounce rate:" + bounceRate);
 						jedis.lpush(vistDepthStatQueue, pageId + ":" + bounceRate);
 					} else {
 						//depth distribution
@@ -120,12 +125,15 @@ public class VisitDepthBolt extends  GenericBolt {
 		} else {
 			String pageId = input.getStringByField(VisitTopology.PAGE_ID);
 			int pageCount = input.getIntegerByField(VisitTopology.PAGE_COUNT);
+			LOG.debug("got session pageId:" + pageId + " pageCount:" + pageCount);
 			window = windows.get(pageId);
 			if (null == window) {
 				window = new BiasedReservoirWindow<Integer>(windowSize); 
+				LOG.debug("created new window");
 				windows.put(pageId, window);
 			}
 			window.add(pageCount);
+			LOG.debug("added to window new size:" + window.size());
 		}
 		return status;
 	}

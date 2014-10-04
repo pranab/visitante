@@ -46,6 +46,9 @@ public class VisitTopology {
     	String topologyName = args[0];
     	String configFilePath = args[1];
     	Config conf = RealtimeUtil.buildStormConfig(configFilePath);
+    	boolean debugOn = ConfigUtility.getBoolean(conf,"debug.on", false);
+    	System.out.println("config file:" + configFilePath + " debugOn:" + debugOn);
+    	conf.put(Config.TOPOLOGY_DEBUG, debugOn);
     	
     	//spout
         TopologyBuilder builder = new TopologyBuilder();

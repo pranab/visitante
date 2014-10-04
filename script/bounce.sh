@@ -9,10 +9,16 @@ fi
 case "$1" in
 "genLogs")  
 	# ./bounce.py <num_items> <num_sessions>
-	echo  "generating events and pushing to redis queue"
+	echo  "generating logs and pushing to redis queue"
 	./bounce.py genLogs $2 $3
     ;;
     
+"readLogs")  
+	# ./bounce.py readLogQueue
+	echo  "reading logs from redis queue"
+	./bounce.py readLogQueue
+    ;;
+
 "buildJar")
 	echo  "building uber jar"
 	ant -f build_storm.xml
@@ -36,6 +42,12 @@ case "$1" in
 	echo  "killing visitante storm topology"
 	storm  kill  bounce
 	;;
+
+"readStats")  
+	# ./bounce.py readStatQueue
+	echo  "reading stats from redis queue"
+	./bounce.py readStatQueue
+    ;;
 
 *) 
 	echo "unknown operation $1"

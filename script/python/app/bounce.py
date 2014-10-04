@@ -12,9 +12,9 @@ from util import *
 
 pageCountMax = 15
 items = []
-pagesGET = ["/home","/shoppingCart","/product","/onSale","/brands", "/about"]
+pagesGET = ["/shoppingCart","/product","/onSale","/brands", "/about"]
 pagesPOST = ["/addToCart","/checkOut","/billing","/confirmShipping","/placeOrder"]
-homePages = ["home1", "home2", "home3"]
+homePages = ["home1", "home2"]
 rc = redis.StrictRedis(host='localhost', port=6379, db=0)
 epochInterval = 10
 
