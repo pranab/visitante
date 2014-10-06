@@ -103,7 +103,7 @@ public class VisitDepthBolt extends  GenericBolt {
 						int bounceRate = (bounceCount * 100) / window.size();
 						LOG.debug("bounce rate:" + bounceRate);
 						jedis.lpush(vistDepthStatQueue, pageId + ":" + bounceRate);
-					} else {
+					} else if (resultType.equals("depthDistr")){
 						//depth distribution
 						TreeMap<Integer, Integer> depthDistr = new TreeMap<Integer, Integer>();
 						Iterator<Integer> it = window.getIterator();
@@ -119,6 +119,16 @@ public class VisitDepthBolt extends  GenericBolt {
 						//serialize and write to queue
 						String distr = Utility.serializeMap(depthDistr, ",", ":");
 						jedis.lpush(vistDepthStatQueue, pageId + ":" + distr);
+					} else if (resultType.equals("avDepth")) {
+						int sum = 0;
+						Iterator<Integer> it = window.getIterator();
+						while(it.hasNext()) {
+							Integer depth = it.next();
+							sum += depth;
+						}				
+						int avDepth =  Math.round((float)sum / window.size());
+						LOG.debug("average depth:" + avDepth);
+						jedis.lpush(vistDepthStatQueue, pageId + ":" + avDepth);
 					}
 				}
 			}
