@@ -1,0 +1,33 @@
+This tutorial is for finding bounce rate of an web site using a storm based 
+implementation and biased reservoir sampling algorithm. All the commands below 
+rely on the shell script bounce.sh and the python script bounce.py
+
+Build all projects
+==================
+mvn install chombo
+mvn install hoidla
+mvn install visitante
+
+Build uber jar
+==============
+./bounce.sh buildJar
+
+Start Storm
+===========
+./bounce.sh startStorm
+
+Deploy topology
+===============
+./bounce.sh deployTopology  
+
+Push data to Redis Queue
+========================
+./bounce.sh genLogs  <num items> <num sessions>
+
+Browse trending items
+=====================
+/bounce.sh readStats
+
+Kill topology
+===============
+./bounce.sh killTopology  
