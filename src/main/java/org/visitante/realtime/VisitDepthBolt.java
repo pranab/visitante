@@ -23,16 +23,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
+import org.chombo.storm.MessageQueue;
 import org.chombo.util.ConfigUtility;
 import org.chombo.util.Utility;
 import org.hoidla.window.BiasedReservoirWindow;
-import org.chombo.util.RealtimeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import redis.clients.jedis.Jedis;
 import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
@@ -50,7 +49,7 @@ public class VisitDepthBolt extends  GenericBolt {
 	private BiasedReservoirWindow<Integer> window;
 	private Map<String, BiasedReservoirWindow<Integer>> windows = new HashMap<String, BiasedReservoirWindow<Integer>>();
 	private String  resultType;
-	private Jedis jedis;
+	private MessageQueue msgQueue;
 	private String vistDepthStatQueue;
 
 	private static final Logger LOG = LoggerFactory.getLogger(VisitDepthBolt.class);
@@ -76,8 +75,8 @@ public class VisitDepthBolt extends  GenericBolt {
 		minWindowSizeForStat = ConfigUtility.getInt(stormConf, "min.window.size.for.stat", (windowSize * 3) / 4);
 		resultType = ConfigUtility.getString(stormConf, "result.type");
 		
-		jedis = RealtimeUtil.buildRedisClient(stormConf);
 		vistDepthStatQueue = ConfigUtility.getString(stormConf, "visit.depth.stat.queue");
+		msgQueue = MessageQueue.createMessageQueue(stormConf, vistDepthStatQueue);
 	}
 
 	@Override
@@ -102,7 +101,7 @@ public class VisitDepthBolt extends  GenericBolt {
 						}
 						int bounceRate = (bounceCount * 100) / window.size();
 						LOG.debug("bounce rate:" + bounceRate);
-						jedis.lpush(vistDepthStatQueue, pageId + ":" + bounceRate);
+						msgQueue.send(pageId + ":" + bounceRate);
 					} else if (resultType.equals("depthDistr")){
 						//depth distribution
 						TreeMap<Integer, Integer> depthDistr = new TreeMap<Integer, Integer>();
@@ -118,7 +117,7 @@ public class VisitDepthBolt extends  GenericBolt {
 						}		
 						//serialize and write to queue
 						String distr = Utility.serializeMap(depthDistr, ",", ":");
-						jedis.lpush(vistDepthStatQueue, pageId + ":" + distr);
+						msgQueue.send(pageId + ":" + distr);
 					} else if (resultType.equals("avDepth")) {
 						int sum = 0;
 						Iterator<Integer> it = window.getIterator();
@@ -128,7 +127,7 @@ public class VisitDepthBolt extends  GenericBolt {
 						}				
 						int avDepth =  Math.round((float)sum / window.size());
 						LOG.debug("average depth:" + avDepth);
-						jedis.lpush(vistDepthStatQueue, pageId + ":" + avDepth);
+						msgQueue.send(pageId + ":" + avDepth);
 					}
 				}
 			}

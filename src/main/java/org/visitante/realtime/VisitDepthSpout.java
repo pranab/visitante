@@ -25,26 +25,25 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.chombo.storm.GenericSpout;
 import org.chombo.storm.MessageHolder;
+import org.chombo.storm.MessageQueue;
 import org.chombo.util.ConfigUtility;
-import org.chombo.util.RealtimeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import redis.clients.jedis.Jedis;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Values;
 
 public class VisitDepthSpout extends GenericSpout {
 	private String logQueue;
-	private Jedis jedis;
 	private String seesionRegex;
 	private DateFormat dF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private int dateOrd;
 	private int timeOrd;
 	private int urlOrd;
 	private Pattern pattern;
+	private MessageQueue msgQueue;
 	private static final Logger LOG = LoggerFactory.getLogger(VisitDepthSpout.class);
 	
 	@Override
@@ -73,8 +72,8 @@ public class VisitDepthSpout extends GenericSpout {
 
 	@Override
 	public void intialize(Map stormConf, TopologyContext context) {
-		jedis = RealtimeUtil.buildRedisClient(stormConf);
 		logQueue = ConfigUtility.getString(stormConf, "redis.log.queue");
+		msgQueue = MessageQueue.createMessageQueue(stormConf, logQueue);
 		dateOrd = ConfigUtility.getInt(stormConf, "date.ordinal");
 		timeOrd = ConfigUtility.getInt(stormConf, "time.ordinal");
 		urlOrd = ConfigUtility.getInt(stormConf, "url.ordinal");
@@ -88,7 +87,7 @@ public class VisitDepthSpout extends GenericSpout {
 	@Override
 	public MessageHolder nextSpoutMessage() {
 		MessageHolder msgHolder = null;
-		String message  = jedis.rpop(logQueue);		
+		String message  = msgQueue.receive();		
 		if(null != message) {
 			//message in event queue
 			String[] items = message.split("\\s+");
