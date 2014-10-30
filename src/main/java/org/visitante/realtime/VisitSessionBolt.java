@@ -60,9 +60,9 @@ public class VisitSessionBolt extends  GenericBolt {
 	
 	@Override
 	public Map<String, Object> getComponentConfiguration() {
-		  Config conf = new Config();
-		  conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, tickFrequencyInSeconds);
-		  return conf;
+		Config conf = new Config();
+		conf.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, tickFrequencyInSeconds);
+		return conf;
 	}
 
 	@Override
