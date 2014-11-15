@@ -23,9 +23,25 @@ def genLogs(threadName, areaCode, phoneNum):
 		tm = time.strftime("%H:%M:%S")
 		log = "%s %s %s %d %s" %(dt, tm, session, areaCode, phoneNum)	
 		print log
-		#rc.lpush("logQueue", log)
+		rc.lpush("appLogQueue", log)
 		time.sleep(randint(1,4))
-		
+
+def readAppLogQueue():
+	while True:
+		line = rc.rpop("appLogQueue")
+		if line is not None:
+			print line
+		else:
+			break
+			
+def readUniqueAppUserCountQueue():
+	while True:
+		line = rc.rpop("uniqueAppUserCountQueue")
+		if line is not None:
+			print line
+		else:
+			break
+					
 #command processing
 op = sys.argv[1]
 if (op == "genLogs"):	            
@@ -53,6 +69,11 @@ if (op == "genLogs"):
 	except:
    		print "Error: unable to start thread"
 			
+elif (op == "readUserCount"):
+	readUniqueAppUserCountQueue()
+
+elif (op == "readAppLog"):
+	readAppLogQueue()
 
 
 		

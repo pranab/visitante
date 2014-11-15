@@ -77,6 +77,7 @@ public class UniqueVisitorSpout extends GenericSpout {
 		String message  = msgQueue.receive();		
 		if(null != message) {
 			//message in event queue
+			LOG.info("read message");
 			String[] items = message.split("\\s+");
 			String partition = items[partOrd];
 			String userId = items[userIdOrd];

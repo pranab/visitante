@@ -25,6 +25,8 @@ import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
 import org.chombo.storm.MessageQueue;
 import org.chombo.util.ConfigUtility;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import backtype.storm.task.TopologyContext;
 import backtype.storm.tuple.Tuple;
@@ -38,6 +40,7 @@ public class UniqueVisitorAggregatorBolt extends  GenericBolt {
 	private Map<String, Long> uniqueItemCounts = new HashMap<String, Long>();
 	private int numUniqueCounterBolt;
 	private MessageQueue msgQueue;
+	private static final Logger LOG = LoggerFactory.getLogger(UniqueVisitorAggregatorBolt.class);
 	
 	@Override
 	public Map<String, Object> getComponentConfiguration() {
@@ -59,6 +62,7 @@ public class UniqueVisitorAggregatorBolt extends  GenericBolt {
 		if (uniqueItemCounts.containsKey(countingBoltID)) {
 			//missed synchronization
 			uniqueItemCounts.clear();
+			LOG.info("missed synchronization");
 		}
 		
 		long uniqueCount = input.getLongByField(UniqueVisitorTopology.UNIQUE_COUNT);
@@ -70,7 +74,7 @@ public class UniqueVisitorAggregatorBolt extends  GenericBolt {
 				totalUniqueCount += uniqueItemCounts.get(boltID);
 			}
 			msgQueue.send("" + totalUniqueCount);
-			
+			LOG.info("wrote to count output queue totalUniqueCount:" + totalUniqueCount);
 			//clear cache
 			uniqueItemCounts.clear();
 		}

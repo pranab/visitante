@@ -24,6 +24,8 @@ import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
 import org.chombo.util.ConfigUtility;
 import org.hoidla.stream.HyperLogLog;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import backtype.storm.Config;
 import backtype.storm.task.TopologyContext;
@@ -39,6 +41,7 @@ public class UniqueVisitorCounterBolt extends  GenericBolt {
 	private HyperLogLog uniqueCounter;
 	private MessageHolder msg;
 	private long minTotalCount;
+	private static final Logger LOG = LoggerFactory.getLogger(UniqueVisitorCounterBolt.class);
 	
 	public UniqueVisitorCounterBolt(int tickFrequencyInSeconds) {
 		super();
@@ -65,6 +68,7 @@ public class UniqueVisitorCounterBolt extends  GenericBolt {
 		outputMessages.clear();
 		
 		if (isTickTuple(input)) {
+			LOG.info("got tick tuple ");
 			long totalCount = uniqueCounter.getCount();
 			if (totalCount > minTotalCount)	{
 				//only after some minimum number of items have been processed
@@ -72,20 +76,21 @@ public class UniqueVisitorCounterBolt extends  GenericBolt {
 				msg = new MessageHolder();
 				msg.setMessage(new Values(getID(), count));
 				outputMessages.add(msg);
+				LOG.info("emitted count:" + count);
 			}
 			
 			//check if there is request to reset
 		} else {
 			String userID = input.getStringByField(UniqueVisitorTopology.USER_ID);
 			uniqueCounter.add(userID);
+			LOG.info("added to counter");
 		}
 		return status;
 	}
 
 	@Override
 	public List<MessageHolder> getOutput() {
-		// TODO Auto-generated method stub
-		return null;
+		return outputMessages;
 	}
 
 }
