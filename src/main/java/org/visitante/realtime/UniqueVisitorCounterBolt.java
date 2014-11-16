@@ -20,8 +20,11 @@ package org.visitante.realtime;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.chombo.storm.GenericBolt;
 import org.chombo.storm.MessageHolder;
+import org.chombo.storm.MessageQueue;
+import org.chombo.storm.PubSub;
 import org.chombo.util.ConfigUtility;
 import org.hoidla.stream.HyperLogLog;
 import org.slf4j.Logger;
@@ -39,8 +42,11 @@ import backtype.storm.tuple.Values;
 public class UniqueVisitorCounterBolt extends  GenericBolt {
 	private int tickFrequencyInSeconds;
 	private HyperLogLog uniqueCounter;
-	private MessageHolder msg;
+	private PubSub pubSub;
 	private long minTotalCount;
+	private MessageHolder msg;
+	private static final String COMM_RESET = "reset";
+	
 	private static final Logger LOG = LoggerFactory.getLogger(UniqueVisitorCounterBolt.class);
 	
 	public UniqueVisitorCounterBolt(int tickFrequencyInSeconds) {
@@ -60,6 +66,14 @@ public class UniqueVisitorCounterBolt extends  GenericBolt {
 		int bucketBitCount = ConfigUtility.getInt(stormConf, "bucket.bit.count");
 		uniqueCounter = new HyperLogLog(bucketBitCount);
 		minTotalCount = ConfigUtility.getLong(stormConf, "min.total.count");
+		
+		//pub sub for command
+		String commStore = ConfigUtility.getString(stormConf, "command.store");
+		if (!StringUtils.isBlank(commStore)) {
+			int numUniqueCounterBolt = ConfigUtility.getInt(stormConf, "unique.count.bolt.threads", 1);		
+			pubSub = PubSub.createPubSub(stormConf, commStore, numUniqueCounterBolt);
+		}
+
 	}
 
 	@Override
@@ -80,6 +94,14 @@ public class UniqueVisitorCounterBolt extends  GenericBolt {
 			}
 			
 			//check if there is request to reset
+			if (null != pubSub) {
+				String command = pubSub.subscribe(getID());
+				if (null != command) {
+					if (command.equals(COMM_RESET)) {
+						uniqueCounter.clear();
+					}
+				}
+			}
 		} else {
 			String userID = input.getStringByField(UniqueVisitorTopology.USER_ID);
 			uniqueCounter.add(userID);

@@ -73,7 +73,7 @@ public class UniqueVisitorAggregatorBolt extends  GenericBolt {
 			for (String boltID : uniqueItemCounts.keySet()) {
 				totalUniqueCount += uniqueItemCounts.get(boltID);
 			}
-			msgQueue.send("" + totalUniqueCount);
+			msgQueue.send("" + System.currentTimeMillis() + "  " + totalUniqueCount);
 			LOG.info("wrote to count output queue totalUniqueCount:" + totalUniqueCount);
 			//clear cache
 			uniqueItemCounts.clear();

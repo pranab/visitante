@@ -1,0 +1,33 @@
+This tutorial is for counting the number of unique users for a mobile app using a 
+storm based  implementation using HyperLogLog algorithm. All the commands below 
+rely on the shell script app_usage.sh and the python script mobile_app_usage.py
+
+Build all projects
+==================
+mvn install chombo
+mvn install hoidla
+mvn install visitante
+
+Build uber jar
+==============
+./app_usage.sh buildJar
+
+Start Storm
+===========
+./app_usage.sh startStorm
+
+Deploy topology
+===============
+./app_usage.sh deployTopology  
+
+Push data to Messsage Queue
+===========================
+./app_usage.sh genLogs   <num sessions>
+
+Browse unique user counts
+=========================
+/app_usage.sh readUserCount
+
+Kill topology
+===============
+./app_usage.sh killTopology  
