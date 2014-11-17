@@ -68,8 +68,8 @@ public class UniqueVisitorCounterBolt extends  GenericBolt {
 		minTotalCount = ConfigUtility.getLong(stormConf, "min.total.count");
 		
 		//pub sub for command
-		String commStore = ConfigUtility.getString(stormConf, "command.store");
-		if (!StringUtils.isBlank(commStore)) {
+		String commStore = ConfigUtility.getString(stormConf, "command.store", "none");
+		if (!commStore.equals("none")) {
 			int numUniqueCounterBolt = ConfigUtility.getInt(stormConf, "unique.count.bolt.threads", 1);		
 			pubSub = PubSub.createPubSub(stormConf, commStore, numUniqueCounterBolt);
 		}
