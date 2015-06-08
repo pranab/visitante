@@ -1,0 +1,48 @@
+This tutorial is for web log analytic. It extracts session data from logs
+
+Generate product data
+=====================
+ruby gen_product.rb <num_of_products> <prod_id_length> > product.txt
+
+num_of_products = number of products e.g. 100
+prod_id_length = lengh of priduct id field e.g., 10
+
+Generate user data
+==================
+ruby gen_user.rb <num_of_users> <user_id_length> > user.txt
+
+num_of_users = number of users e.g. 1000
+user_id_length = lengh of user id field e.g., 10
+
+Generate converted users
+========================
+Take some lines from user.txt and copy into a new file convertedUsers.txt
+
+Generate logs
+=============
+ruby gen_log.rb <date> <num_of_users> > log.txt
+date = date e.g. 2015-05-15
+num_of_users = number of users e.g. 200
+
+Copy log data to HDFS input path
+================================
+hadoops fs -put log.txt /user/pranab/sese/input
+
+Run session extractor map reduce
+================================
+JAR_NAME=/home/pranab/Projects/visitante/target/chombo-1.0.jar
+CLASS_NAME=org.visitante.basic.SessionExtractor
+echo "running mr"
+IN_PATH=/user/pranab/sese/input
+OUT_PATH=/user/pranab/sese/output
+echo "input $IN_PATH output $OUT_PATH"
+hadoop fs -rmr $OUT_PATH
+echo "removed output dir"
+hadoop jar $JAR_NAME  $CLASS_NAME -Dconf.path=/home/pranab/Projects/bin/visitante/visitante.properties  $IN_PATH  $OUT_PATH
+
+Configuration
+=============
+Configutation properiies are in visitante.properties
+
+
+
