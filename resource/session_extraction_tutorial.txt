@@ -30,7 +30,7 @@ hadoops fs -put log.txt /user/pranab/sese/input
 
 Run session extractor map reduce
 ================================
-JAR_NAME=/home/pranab/Projects/visitante/target/chombo-1.0.jar
+JAR_NAME=/home/pranab/Projects/visitante/target/visitante-1.0.jar
 CLASS_NAME=org.visitante.basic.SessionExtractor
 echo "running mr"
 IN_PATH=/user/pranab/sese/input
