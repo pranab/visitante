@@ -1,3 +1,5 @@
+#!/usr/bin/ruby
+
 require '../lib/util.rb'      
 
 count = ARGV[0].to_i

@@ -42,7 +42,6 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.chombo.util.SecondarySort;
-import org.chombo.util.TextLong;
 import org.chombo.util.Tuple;
 import org.chombo.util.Utility;
 
@@ -51,7 +50,7 @@ public class SessionEventDetector  extends Configured implements Tool {
 	@Override
 	public int run(String[] args) throws Exception {
         Job job = new Job(getConf());
-        String jobName = "web log user  event detector  MR";
+        String jobName = "web log   event detector  MR";
         job.setJobName(jobName);
         
         job.setJarByClass(SessionEventDetector.class);
@@ -61,19 +60,30 @@ public class SessionEventDetector  extends Configured implements Tool {
 
         Utility.setConfiguration(job.getConfiguration(), "visitante");
         
-        job.setMapperClass(SessionEventDetector.EventMapper.class);
-        job.setReducerClass(SessionEventDetector.EventReducer.class);
-
-        job.setMapOutputKeyClass(Tuple.class);
-        job.setMapOutputValueClass(Text.class);
-
-        job.setOutputKeyClass(NullWritable.class);
-        job.setOutputValueClass(Text.class);
-
-        job.setGroupingComparatorClass(SecondarySort.TuplePairGroupComprator.class);
-        job.setPartitionerClass(SecondarySort.TupleTextPartitioner.class);
-
-        job.setNumReduceTasks(job.getConfiguration().getInt("ee.num.reducer", 1));
+        boolean withSession = job.getConfiguration().getBoolean("with.session", true);
+        if (withSession) {
+        	//log with session e.g. web server log
+	        job.setMapperClass(SessionEventDetector.SessionEventMapper.class);
+	        job.setReducerClass(SessionEventDetector.SessionEventReducer.class);
+	
+	        job.setMapOutputKeyClass(Tuple.class);
+	        job.setMapOutputValueClass(Text.class);
+	
+	        job.setOutputKeyClass(NullWritable.class);
+	        job.setOutputValueClass(Text.class);
+	
+	        job.setGroupingComparatorClass(SecondarySort.TuplePairGroupComprator.class);
+	        job.setPartitionerClass(SecondarySort.TupleTextPartitioner.class);
+	
+	        job.setNumReduceTasks(job.getConfiguration().getInt("ee.num.reducer", 1));
+        } else {
+        	//without session
+	        job.setMapperClass(SessionEventDetector.EventMapper.class);
+	        job.setOutputKeyClass(NullWritable.class);
+	        job.setOutputValueClass(Text.class);
+	        job.setNumReduceTasks(0);
+        }
+        
         int status =  job.waitForCompletion(true) ? 0 : 1;
         return status;
 	}
@@ -82,7 +92,59 @@ public class SessionEventDetector  extends Configured implements Tool {
 	 * @author pranab
 	 *
 	 */
-	public static class EventMapper extends Mapper<LongWritable, Text, Tuple, Text> {
+	public static class EventMapper extends Mapper<LongWritable, Text, NullWritable, Text> {
+		private Text outVal = new Text();
+		private int beforeMatchContextSize;
+		private int afterMatchContextSize;
+		private Map<String, Pattern> patterns = new HashMap<String, Pattern>();
+		private List<String> records = new ArrayList<String>();
+		private int maxBufferSize;
+		private String record;
+		
+        protected void setup(Context context) throws IOException, InterruptedException {
+        	Configuration config = context.getConfiguration();
+        	beforeMatchContextSize = config.getInt("before.match.context.size", 3);
+        	afterMatchContextSize = config.getInt("after.match.context.size", 2);
+        	maxBufferSize = beforeMatchContextSize + afterMatchContextSize + 1;
+        	
+        	//patterns
+        	buildPatterns(config, patterns);
+        }
+        
+        @Override
+        protected void map(LongWritable key, Text value, Context context)
+            throws IOException, InterruptedException {
+        	records.add(value.toString());
+        	if (records.size() > maxBufferSize) {
+        		records.remove(0);
+        	}
+        	
+           	if (records.size() == maxBufferSize) {
+           		record = records.get(beforeMatchContextSize);
+           		
+           		//all patterns
+        		for (String patternName : patterns.keySet()) {
+    				if (patterns.get(patternName).matcher(record).matches()) {
+    					outVal.set(" ");
+						context.write(NullWritable.get(),outVal);
+						outVal.set("event: " + patternName);
+						context.write(NullWritable.get(),outVal);
+
+						for (String rec : records) {
+	    					outVal.set(rec);
+							context.write(NullWritable.get(),outVal);
+						}
+    				}
+        		}   		
+           	}
+        }    
+	}
+	
+	/**
+	 * @author pranab
+	 *
+	 */
+	public static class SessionEventMapper extends Mapper<LongWritable, Text, Tuple, Text> {
 		private String[] items;
 		private Tuple outKey = new Tuple();
 		private Text outVal = new Text();
@@ -105,15 +167,17 @@ public class SessionEventDetector  extends Configured implements Tool {
         private String cookieSeparator;
         
         protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\s+");
-        	String fieldMetaSt = context.getConfiguration().get("field.meta");
+        	Configuration config = context.getConfiguration();
+        	fieldDelimRegex = config.get("field.delim.regex", "\\s+");
+        	String fieldMetaSt = config.get("field.meta");
         	System.out.println("fieldMetaSt:" + fieldMetaSt);
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
         	cookieOrd =new Integer(filedMetaData.get("cookie"));
             dateOrd =new Integer(filedMetaData.get("date"));
             timeOrd =new Integer(filedMetaData.get("time"));
-            dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String dateFormatStr = config.get("date.format.str",  "yyyy-MM-dd HH:mm:ss");
+            dateFormat = new SimpleDateFormat(dateFormatStr);
             sessionIDName = context.getConfiguration().get("session.id.name");
             userIDName = context.getConfiguration().get("user.id.name");
             cookieSeparator = context.getConfiguration().get("cookie.separator", ";\\+");
@@ -159,10 +223,11 @@ public class SessionEventDetector  extends Configured implements Tool {
 	 * @author pranab
 	 *
 	 */
-	public static class EventReducer extends Reducer<Tuple, Text, NullWritable, Text> {
+	public static class SessionEventReducer extends Reducer<Tuple, Text, NullWritable, Text> {
 		private Text outVal = new Text();
 		private String fieldDelim;
-		private int matchContextSize;
+		private int beforeMatchContextSize;
+		private int afterMatchContextSize;
 		private Map<String, Pattern> patterns = new HashMap<String, Pattern>();
 		private List<String> records = new ArrayList<String>();
 		
@@ -172,22 +237,11 @@ public class SessionEventDetector  extends Configured implements Tool {
 		protected void setup(Context context) throws IOException, InterruptedException {
         	Configuration config = context.getConfiguration();
         	fieldDelim = config.get("field.delim.out", ",");
-        	matchContextSize = config.getInt("match.context.size", 2);
+        	beforeMatchContextSize = config.getInt("before.match.context.size", 3);
+        	afterMatchContextSize = config.getInt("after.match.context.size", 2);
         	
         	//patterns
-        	String key = null;
-        	String name = null;
-        	String regex = null;
-        	for (int i = 1;  ; ++i) {
-        		key = "event.pattern." + i + ".name";
-        		name = config.get(key);
-        		if (null == name) {
-        			break;
-        		}
-        		key = "event.pattern." + i + ".regex";
-        		regex = config.get(key);
-        		patterns.put(key, Pattern.compile(regex));
-        	}
+        	buildPatterns(config, patterns);
        }
 		
     	/* (non-Javadoc)
@@ -204,21 +258,16 @@ public class SessionEventDetector  extends Configured implements Tool {
     		for (String patternName : patterns.keySet()) {
     			int i = 0;
     			//all records
-    			boolean firstMatch = true;
     			for (String record : records) {
     				if (patterns.get(patternName).matcher(record).matches()) {
-    					int beg = i - matchContextSize;
+    					int beg = i - beforeMatchContextSize;
     					beg = beg < 0 ? 0 : beg;
-    					int end =  i + matchContextSize;
+    					int end =  i + afterMatchContextSize;
     					end = end > records.size() -1 ? records.size() -1 : end;
     					
-    					if (firstMatch) {
-    						outVal.set("event: " + patternName);
-    						context.write(NullWritable.get(),outVal);
-        					firstMatch = false;
-    					}
-						
     					outVal.set(" ");
+						context.write(NullWritable.get(),outVal);
+						outVal.set("event: " + patternName);
 						context.write(NullWritable.get(),outVal);
 						for (int j = beg;  j <= end; ++j) {
     						outVal.set(records.get(j));
@@ -232,6 +281,27 @@ public class SessionEventDetector  extends Configured implements Tool {
     	}
     	
 	}
+	
+	/**
+	 * @param config
+	 * @param patterns
+	 */
+	public static void buildPatterns(Configuration config, Map<String, Pattern> patterns ) {
+    	//patterns
+    	String key = null;
+    	String name = null;
+    	String regex = null;
+    	for (int i = 1;  ; ++i) {
+    		key = "event.pattern." + i + ".name";
+    		name = config.get(key);
+    		if (null == name) {
+    			break;
+    		}
+    		key = "event.pattern." + i + ".regex";
+    		regex = config.get(key);
+    		patterns.put(key, Pattern.compile(regex));
+    	}
+   }
 	
     public static void main(String[] args) throws Exception {
         int exitCode = ToolRunner.run(new SessionEventDetector(), args);

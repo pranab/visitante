@@ -1,3 +1,5 @@
+#!/usr/bin/ruby
+
 require '../lib/util.rb'    
 
 class Visit
@@ -26,7 +28,7 @@ class UserSession
 		@convCandidate = convUsers.include?(userID)
 	end
 
-	def genVisits(pageDist, flow, keyWords, referrerDist, convReferrerDist)
+	def genVisits(pageDist, flow, keyWords, referrerDist, convReferrerDist, products)
 		duration = @sessionEnd - @sessionStart
 		avTimeSpent = duration / (@numPages + 1)
 		time = @sessionStart
@@ -45,6 +47,7 @@ class UserSession
 			np = np + 4
 		end
 		
+		cart = []
 		1.upto np do
 			page = pageDist.value
 			if (page.rindex("search"))
@@ -57,6 +60,25 @@ class UserSession
 				#internal referrer
 				referrer = @home + @visits[@visits.length - 1].url
 			end
+
+			#add to cart
+			if (page.rindex("addToCart"))
+				product = products[rand(products.length)]
+				page = page + "/" + product
+				cart << product
+			end
+
+			#remove from cart
+			if (page.rindex("remFromCart"))
+				if (cart.any?)
+					remProduct = cart[rand(cart.length)]
+					page = page + "/" + remProduct
+					cart = cart - [remProduct]
+				else
+					next
+				end
+			end
+
 			visit = Visit.new(time, page, referrer)
 			@visits << visit
 			time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
@@ -65,11 +87,13 @@ class UserSession
 			if (page.rindex("product") && rand(10) < 3)
 				referrer = page
 				product = page.split('/')[2]
+				cart << product
 				page = "/addToCart/" +  product
 				visit = Visit.new(time, page, referrer)
 				@visits << visit
 				time = time + avTimeSpent / 4  + rand((3 * avTimeSpent) / 2)
 			end
+
 			
 			#puts "user visit time #{@userID}  #{time}"
 		end 
@@ -168,9 +192,12 @@ pageDistValues << "/trackOrder"
 pageDistValues << 16
 pageDistValues << "/addToCart"
 pageDistValues << 14
+pageDistValues << "/remFromCart"
+pageDistValues << 4
 pageDistValues << "/help"
 pageDistValues << 6
 
+products = []
 
 # product pages
 File.open("product.txt", "r") do |p|
@@ -178,6 +205,7 @@ File.open("product.txt", "r") do |p|
 		prodID = line.split[0]
 		pageDistValues  << "/product/#{prodID}"
 		pageDistValues << (1 + rand(5))
+		products << prodID
 	end
 end
 
@@ -233,7 +261,7 @@ userIds.each do |u|
 	sessionEnd = sessionStart + duration
 	sessionEnd = sessionEnd < secDay ? sessionEnd : secDay - 1
 	
-	numPages = duration / 90 + rand(4) - 2
+	numPages = duration / 60 + rand(4) - 2
 	numPages = numPages < 1  ? 1 : numPages
 	#puts "#{line} #{sessionStart} #{sessionEnd} #{numPages}"
 	userSession = UserSession.new(u, sessionStart, sessionEnd, numPages, idGen, convUsers, day)
@@ -247,7 +275,7 @@ while i < secDay
 	users.each do |u|
 		if u.sessionStart == i
 			activeSessions << u;
-			u.genVisits(pageDist, flow, keyWords, referrerDist, convReferrerDist)
+			u.genVisits(pageDist, flow, keyWords, referrerDist, convReferrerDist, products)
 		elsif u.sessionEnd == i
 			activeSessions.delete(u)
 			u.clearVisits
