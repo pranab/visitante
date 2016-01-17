@@ -45,6 +45,11 @@ import org.chombo.util.SecondarySort;
 import org.chombo.util.Tuple;
 import org.chombo.util.Utility;
 
+/**
+ * Detects events based on patterns and generates output with surrounding context
+ * @author pranab
+ *
+ */
 public class SessionEventDetector  extends Configured implements Tool {
 
 	@Override
