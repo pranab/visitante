@@ -178,6 +178,10 @@ public class SessionEventDetector  extends Configured implements Tool {
         private String userID;
         private String[] cookieItems;
         private String cookieSeparator;
+        private Long minDateTime;
+        private Long maxDateTime;
+        private boolean toEmit;
+        private List<String> lines = new ArrayList<String>();
         
         protected void setup(Context context) throws IOException, InterruptedException {
         	Configuration config = context.getConfiguration();
@@ -191,9 +195,24 @@ public class SessionEventDetector  extends Configured implements Tool {
             timeOrd =new Integer(filedMetaData.get("time"));
             String dateFormatStr = config.get("date.format.str",  "yyyy-MM-dd HH:mm:ss");
             dateFormat = new SimpleDateFormat(dateFormatStr);
-            sessionIDName = context.getConfiguration().get("session.id.name");
-            userIDName = context.getConfiguration().get("user.id.name");
-            cookieSeparator = context.getConfiguration().get("cookie.separator", ";\\+");
+            sessionIDName = config.get("session.id.name");
+            userIDName = config.get("user.id.name");
+            cookieSeparator = config.get("cookie.separator", ";\\+");
+            
+            //date time constraint
+            try {
+	            String minDateTimeStr = config.get("min.date.time");
+	            if (null != minDateTimeStr) {
+	            	minDateTime = dateFormat.parse(minDateTimeStr).getTime();
+	            }
+            
+	            String maxDateTimeStr = config.get("max.date.time");
+	            if (null != maxDateTimeStr) {
+	            	maxDateTime = dateFormat.parse(maxDateTimeStr).getTime();
+	            }
+            } catch (ParseException ex) {
+				throw new IOException("Failed to parse date time", ex);
+			}
        }
         
         @Override
@@ -202,15 +221,30 @@ public class SessionEventDetector  extends Configured implements Tool {
             items  =  value.toString().split(fieldDelimRegex);
             try {
 				date = dateFormat.parse(items[dateOrd] + " " + items[timeOrd]);
-				timeStamp = date.getTime();
-				getSessionID();
-				outKey.initialize();
-				outKey.add(sessionID, timeStamp);
 				
-				outVal.set(value.toString());
-   	   			context.write(outKey, outVal);
+				//new record
+				if (!lines.isEmpty()) {
+					//emit previous
+					outKey.initialize();
+					outKey.add(sessionID, timeStamp);
+				
+					outVal.set(Utility.join(lines, "\\n"));
+   	   				context.write(outKey, outVal);
+   	   				lines.clear();
+				}
+				
+				timeStamp = date.getTime();
+				toEmit = (null == minDateTime || timeStamp > minDateTime) && 
+						(null == maxDateTime || timeStamp < maxDateTime);
+				if (toEmit) {
+					lines.add(value.toString());
+					getSessionID();
+				}
 			} catch (ParseException ex) {
-				throw new IOException("Failed to parse date time", ex);
+				//continuation line
+				if (toEmit) {
+					lines.add(value.toString());
+				}
 			}
         }
         
