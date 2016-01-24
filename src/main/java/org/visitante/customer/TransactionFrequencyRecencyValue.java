@@ -18,6 +18,8 @@
 package org.visitante.customer;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +30,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
@@ -94,10 +97,18 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 		private List<Long> xactionTimeGaps = new ArrayList<Long>();
 		private List<Double> xactionValues = new ArrayList<Double>();
 		private long avTimeGap;
+		private long minAvTimeGap;
+		private long maxAvTimeGap;
+		private double sumTimeGap;
+		private double sumSqTimeGap;
+		private long timeGapCount;
 		private double avValue;
+		private double minAvValue;
+		private double maxAvValue;
 		private long recency;
 		private long gapSum;
 		private double valueSum;
+		
 		private static final long MS_PER_HOUR = 60L * 1000 * 1000;
 		private static final long MS_PER_DAY = MS_PER_HOUR * 24;
 		
@@ -112,8 +123,36 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
         	numAttributes = Utility.assertIntArrayConfigParam(config, "trf.quant.attr.list", configDelim, 
         			"missing quant attribute list").length;
         	now = System.currentTimeMillis();
+        	
+        	minAvTimeGap = Long.MAX_VALUE;
+        	maxAvTimeGap = Long.MIN_VALUE;
+
+        	minAvValue = Double.MAX_VALUE;
+        	maxAvValue = Double.MIN_VALUE;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.apache.hadoop.mapreduce.Reducer#cleanup(org.apache.hadoop.mapreduce.Reducer.Context)
+		 */
+		protected void cleanup(Context context) throws IOException, InterruptedException {
+			super.cleanup(context);
+            
+            stBld.delete(0, stBld.length());
+    		stBld.append("minAvTimeGap=").append(minAvTimeGap).append('\n');
+    		stBld.append("maxAvTimeGap=").append(maxAvTimeGap).append('\n');
+    		stBld.append("minAvValue=").append(minAvValue).append('\n');
+    		stBld.append("maxAvValue=").append(maxAvValue).append('\n');
+    		
+    		double globalAvTimeGap = sumTimeGap / timeGapCount;
+    		double variance = sumSqTimeGap / timeGapCount - globalAvTimeGap * globalAvTimeGap;
+    		double globalStdDevTimeGap = Math.sqrt(variance);
+    		stBld.append("globalAvTimeGap=").append(Utility.formatDouble(globalAvTimeGap, 3)).append('\n');
+    		stBld.append("globalStdDevTimeGap=").append(Utility.formatDouble(globalStdDevTimeGap, 3)).append('\n');
+    		
+        	Configuration config = context.getConfiguration();
+            Utility.appendToFile(config, "xaction.stats.file.path", stBld.toString());
+ 		}		
+		
         /* (non-Javadoc)
          * @see org.apache.hadoop.mapreduce.Reducer#reduce(KEYIN, java.lang.Iterable, org.apache.hadoop.mapreduce.Reducer.Context)
          */
@@ -133,18 +172,10 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		}
     		
     		//average time gap
-    		gapSum = 0;
-    		for (Long timeGap : xactionTimeGaps) {
-    			gapSum += timeGap;
-    		}
-    		avTimeGap = gapSum / xactionTimeGaps.size();
+    		averageTimeGap();
     		
     		//average value
-    		valueSum = 0;
-    		for (double xactValue : xactionValues) {
-    			valueSum += xactValue;
-    		}
-    		avValue = valueSum / xactionValues.size();
+    		averageValue();
     		
     		//recency
     		recency = now - lastTimeStamp;
@@ -173,6 +204,36 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 				modTime /= MS_PER_DAY;
 			}
         	return modTime;
+        }
+        
+        /**
+         * 
+         */
+        private void averageTimeGap() {
+    		gapSum = 0;
+    		for (Long timeGap : xactionTimeGaps) {
+    			gapSum += timeGap;
+        		sumTimeGap += timeGap;
+        		sumSqTimeGap += timeGap + timeGap;
+        		++timeGapCount;
+    		}
+    		avTimeGap = gapSum / xactionTimeGaps.size();
+    		minAvTimeGap = avTimeGap < minAvTimeGap ? avTimeGap : minAvTimeGap;
+    		maxAvTimeGap = avTimeGap > maxAvTimeGap ? avTimeGap : maxAvTimeGap;
+    		
+        }
+        
+        /**
+         * 
+         */
+        private void averageValue() {
+    		valueSum = 0;
+    		for (double xactValue : xactionValues) {
+    			valueSum += xactValue;
+    		}
+    		avValue = valueSum / xactionValues.size();
+    		minAvValue = avValue < minAvValue ? avValue : minAvValue;
+    		maxAvValue = avValue > maxAvValue ? avValue : maxAvValue;
         }
 	}
 
