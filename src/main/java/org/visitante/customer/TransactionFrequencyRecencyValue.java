@@ -18,8 +18,6 @@
 package org.visitante.customer;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +28,6 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
@@ -41,8 +38,8 @@ import org.chombo.util.Tuple;
 import org.chombo.util.Utility;
 
 /**
- * Calculates avearge gap between transaction, average transaction value and time since
- * most recent transaction.
+ * Calculates average gap between transaction, average transaction value and time since
+ * most recent transaction for every customer
  * @author pranab
  *
  */
@@ -52,7 +49,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 	@Override
 	public int run(String[] args) throws Exception {
         Job job = new Job(getConf());
-        String jobName = "Time sequence to time gap sequence conversion";
+        String jobName = "Average gap between transaction, average transaction value and time since most recent transaction";
         job.setJobName(jobName);
         
         job.setJarByClass(TransactionFrequencyRecencyValue.class);
