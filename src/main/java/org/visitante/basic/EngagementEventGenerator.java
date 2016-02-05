@@ -25,13 +25,13 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
@@ -43,6 +43,7 @@ import org.visitante.basic.SessionExtractor.SessionIdGroupComprator;
 import org.visitante.basic.SessionExtractor.SessionIdPartitioner;
 
 /**
+ * Extract user engagement events from web logs with pattern matching
  * @author pranab
  *
  */
@@ -78,6 +79,10 @@ public class EngagementEventGenerator extends Configured implements Tool {
         return status;
 	}
 	
+	/**
+	 * @author pranab
+	 *
+	 */
 	public static class SessionReducer extends Reducer<TextLong, Tuple, NullWritable, Text> {
 		private Text outVal = new Text();
 		private String fieldDelim;
@@ -88,31 +93,43 @@ public class EngagementEventGenerator extends Configured implements Tool {
 		private long lastTimeStamp;
 		private Map<String, EngagementEvent> events = new HashMap<String, EngagementEvent>();
 		private List<EventPattern> eventPatterns = new ArrayList<EventPattern>();
+		private int userIDOrd;
+		private int urlOrd;
+		private int timeStampOrd;
 		
+		/* (non-Javadoc)
+		 * @see org.apache.hadoop.mapreduce.Reducer#setup(org.apache.hadoop.mapreduce.Reducer.Context)
+		 */
 		protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelim = context.getConfiguration().get("field.delim.out", ",");
+			Configuration config = context.getConfiguration();
+        	fieldDelim = config.get("field.delim.out", ",");
         	
         	//engaement events e.g. page browsed
-        	String[] engageEvents = context.getConfiguration().get("engagement.events").split(",");
+        	String[] engageEvents = config.get("engagement.events").split(",");
         	for (String engageEvent : engageEvents) {
         		String[] items = engageEvent.split(":");
         		eventPatterns.add(new EventPattern(items));
         	}
-        	
+        	userIDOrd = config.getInt("user.id.ord", 0);
+        	urlOrd = config.getInt("url.ord", 1);
+        	timeStampOrd = config.getInt("time.stamp.ord", 2);
        }
 		
+    	/* (non-Javadoc)
+    	 * @see org.apache.hadoop.mapreduce.Reducer#reduce(KEYIN, java.lang.Iterable, org.apache.hadoop.mapreduce.Reducer.Context)
+    	 */
     	protected void reduce(TextLong key, Iterable<Tuple> values, Context context)
         	throws IOException, InterruptedException {
     		events.clear();
     		boolean first = true;
     		for (Tuple val : values) {
     			if (first) {
-    				userID =  val.getString(0);
-    				lastUrl = val.getString(1);
-    				lastTimeStamp = val.getLong(2);
+    				userID =  val.getString(userIDOrd);
+    				lastUrl = val.getString(urlOrd);
+    				lastTimeStamp = val.getLong(timeStampOrd);
     				first = false;
     			} else {
-    				timeStamp =  val.getLong(2);
+    				timeStamp =  val.getLong(timeStampOrd);
     				timeOnPage = (timeStamp - lastTimeStamp) / 1000;
     				eventFromUrl();
        			    				
@@ -132,6 +149,9 @@ public class EngagementEventGenerator extends Configured implements Tool {
 			}			
     	}
     	
+    	/**
+    	 * extracts events from log line
+    	 */
     	private void eventFromUrl() {
     		EngagementEvent event = null;
     		int eventID = 0;
@@ -180,11 +200,19 @@ public class EngagementEventGenerator extends Configured implements Tool {
     	
 	}
 
+	/**
+	 * @author pranab
+	 *
+	 */
 	private static class EngagementEvent {
 		public int eventID;
 		public int value;
 	}
 	
+	/**
+	 * @author pranab
+	 *
+	 */
 	private static class EventPattern {
 		private int eventID;
 		private Pattern pattern;
@@ -192,6 +220,9 @@ public class EngagementEventGenerator extends Configured implements Tool {
 		private int value;
 		private boolean matched;
 		
+		/**
+		 * @param items
+		 */
 		public EventPattern(String[] items) {
 			pattern = Pattern.compile(items[0]);
 			eventID = new Integer(items[1]);
@@ -200,6 +231,10 @@ public class EngagementEventGenerator extends Configured implements Tool {
 			}
 		}
 		
+		/**
+		 * @param data
+		 * @return
+		 */
 		public boolean isMatched(String data) {
 			matchedItem = null;
 			matched = false;
@@ -213,20 +248,33 @@ public class EngagementEventGenerator extends Configured implements Tool {
 			return matched;
 		}
 
+		/**
+		 * @return
+		 */
 		public String getMatchedItem() {
 			return matchedItem;
 		}
 
+		/**
+		 * @return
+		 */
 		public int getEventID() {
 			return eventID;
 		}
 
+		/**
+		 * @return
+		 */
 		public int getValue() {
 			return value;
 		}
 		
 	}
 	
+    /**
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         int exitCode = ToolRunner.run(new EngagementEventGenerator(), args);
         System.exit(exitCode);

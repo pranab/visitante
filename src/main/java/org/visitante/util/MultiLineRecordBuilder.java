@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import org.chombo.util.Utility;
 
 /**
+ * Build record from multiple lines
  * @author pranab
  *
  */
@@ -149,10 +150,7 @@ public class MultiLineRecordBuilder {
 			matcher = pattern.matcher(line);
 			if (matcher.find()) {
 				//first line
-				if (!lines.isEmpty()) {
-					record = Utility.join(lines, delim);
-					lines.clear();
-				}
+				getRecord();
 			} 
 			lines.add(line);
 			return record;
@@ -180,10 +178,7 @@ public class MultiLineRecordBuilder {
 			matcher = pattern.matcher(line);
 			if (!matcher.find()) {
 				//first line
-				if (!lines.isEmpty()) {
-					record = Utility.join(lines, delim);
-					lines.clear();
-				}
+				getRecord();
 			} 
 			lines.add(line);
 			return record;
