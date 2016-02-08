@@ -147,7 +147,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		stBld.append("globalStdDevTimeGap=").append(Utility.formatDouble(globalStdDevTimeGap, 3)).append('\n');
     		
         	Configuration config = context.getConfiguration();
-            Utility.appendToFile(config, "xaction.stats.file.path", stBld.toString());
+            Utility.appendToFile(config, "trf.xaction.stats.file.path", stBld.toString());
  		}		
 		
         /* (non-Javadoc)
