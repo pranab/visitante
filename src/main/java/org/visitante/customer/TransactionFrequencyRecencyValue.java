@@ -32,6 +32,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.chombo.mr.TimeGapSequenceGenerator;
 import org.chombo.util.SecondarySort;
 import org.chombo.util.Tuple;
@@ -45,6 +47,7 @@ import org.chombo.util.Utility;
  */
 public class TransactionFrequencyRecencyValue extends Configured implements Tool {
 	private static String configDelim = ",";
+    private static final Logger LOG = Logger.getLogger(TransactionFrequencyRecencyValue.class);
 
 	@Override
 	public int run(String[] args) throws Exception {
@@ -114,6 +117,9 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 		 */
 		protected void setup(Context context) throws IOException, InterruptedException {
 			Configuration config = context.getConfiguration();
+            if (config.getBoolean("debug.on", false)) {
+            	LOG.setLevel(Level.DEBUG);
+            }
 			fieldDelim = config.get("field.delim.out", ",");
         	timeGapUnit = config.get("trf.time.gap.unit");
         	numIDFields = Utility.intArrayFromString(config.get("trf.id.field.ordinals"), configDelim).length;
@@ -147,7 +153,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		stBld.append("globalStdDevTimeGap=").append(Utility.formatDouble(globalStdDevTimeGap, 3)).append('\n');
     		
         	Configuration config = context.getConfiguration();
-            Utility.appendToFile(config, "trf.xaction.stats.file.path", stBld.toString());
+            Utility.writeToFile(config, "trf.xaction.stats.file.path", stBld.toString());
  		}		
 		
         /* (non-Javadoc)
@@ -168,25 +174,31 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     			xactionValues.add(Double.parseDouble(val.getString(1)));
     		}
     		
-    		//average time gap
-    		averageTimeGap();
-    		
-    		//average value
-    		averageValue();
-    		
-    		//recency
-    		recency = now - lastTimeStamp;
-    		recency = convertTimeUnit(recency);
-    		
-    		stBld.delete(0, stBld.length());
-    		for (int i = 0; i < numIDFields; ++i) {
-    			stBld.append(key.getString(i)).append(fieldDelim);
+    		//continue only if there are enough samples
+    		if (xactionTimeGaps.size() >= 2) {
+	    		//average time gap
+	    		averageTimeGap();
+	    		
+	    		//average value
+	    		averageValue();
+	    		
+	    		//recency
+	    		recency = now - lastTimeStamp;
+	    		recency = convertTimeUnit(recency);
+	    		
+	    		stBld.delete(0, stBld.length());
+	    		for (int i = 0; i < numIDFields; ++i) {
+	    			stBld.append(key.getString(i)).append(fieldDelim);
+	    		}
+	    		stBld.append(avTimeGap).append(fieldDelim);
+	    		stBld.append(recency).append(fieldDelim);
+	    		stBld.append(Utility.formatDouble(avValue, 2));
+	        	outVal.set(stBld.toString());
+				context.write(NullWritable.get(), outVal);
+    		} else {
+    			LOG.debug("skipping not enough samples id:" + key.toString(0, numIDFields));
+    			context.getCounter("Entity","Not enough samples ").increment(1);
     		}
-    		stBld.append(avTimeGap).append(fieldDelim);
-    		stBld.append(recency).append(fieldDelim);
-    		stBld.append(Utility.formatDouble(avValue, 2));
-        	outVal.set(stBld.toString());
-			context.write(NullWritable.get(), outVal);
         }
         
         /**
