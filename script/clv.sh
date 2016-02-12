@@ -8,7 +8,7 @@ HDFS_BASE_DIR=/user/pranab/clv
 case "$1" in
 
 "genInp")
-	 ./purchase.py createOrders $2 $3 $4 $5 > $6
+	 ./purchase.pyo  $2 $3 $4 $5 > $6
 	 ls -l $6
 ;;
 
@@ -20,7 +20,7 @@ case "$1" in
 
 "transFreq")
 	echo "running MR TransactionFrequencyRecencyValue"
-	CLASS_NAME= org.visitante.customer.TransactionFrequencyRecencyValue
+	CLASS_NAME=org.visitante.customer.TransactionFrequencyRecencyValue
 	IN_PATH=$HDFS_BASE_DIR/input
 	OUT_PATH=$HDFS_BASE_DIR/freq
 	echo "input $IN_PATH output $OUT_PATH"
@@ -34,12 +34,14 @@ case "$1" in
 
 "recencyScore")
 	echo "running MR TransactionFrequencyRecencyValue"
-	CLASS_NAME= org.visitante.customer.TransactionRecencyScore
+	CLASS_NAME=org.visitante.customer.TransactionRecencyScore
 	IN_PATH=$HDFS_BASE_DIR/freq
 	OUT_PATH=$HDFS_BASE_DIR/recency
 	echo "input $IN_PATH output $OUT_PATH"
 	hadoop fs -rmr $OUT_PATH
 	echo "removed output dir"
+	hadoop fs -rm $HDFS_BASE_DIR/stat/*
+	echo "cleaned stat output dir"
 	hadoop jar $JAR_NAME  $CLASS_NAME -Dconf.path=$PROP_FILE  $IN_PATH  $OUT_PATH
 	hadoop fs -rmr $HDFS_BASE_DIR/recency/_logs
 	hadoop fs -rmr $HDFS_BASE_DIR/recency/_SUCCESS
@@ -48,7 +50,7 @@ case "$1" in
 
 "norm")
 	echo "running MR Normalizer"
-	CLASS_NAME=  org.chombo.mr.Normalizer
+	CLASS_NAME=org.chombo.mr.Normalizer
 	IN_PATH=$HDFS_BASE_DIR/recency
 	OUT_PATH=$HDFS_BASE_DIR/norm
 	echo "input $IN_PATH output $OUT_PATH"
@@ -60,7 +62,7 @@ case "$1" in
 
 "lifeTimeValue")
 	echo "running MR WeightedAverage"
-	CLASS_NAME=  org.chombo.mr.WeightedAverage
+	CLASS_NAME=org.chombo.mr.WeightedAverage
 	IN_PATH=$HDFS_BASE_DIR/norm
 	OUT_PATH=$HDFS_BASE_DIR/value
 	echo "input $IN_PATH output $OUT_PATH"

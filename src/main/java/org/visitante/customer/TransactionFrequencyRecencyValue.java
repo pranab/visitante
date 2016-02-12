@@ -143,8 +143,8 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
             stBld.delete(0, stBld.length());
     		stBld.append("minAvTimeGap=").append(minAvTimeGap).append('\n');
     		stBld.append("maxAvTimeGap=").append(maxAvTimeGap).append('\n');
-    		stBld.append("minAvValue=").append(minAvValue).append('\n');
-    		stBld.append("maxAvValue=").append(maxAvValue).append('\n');
+    		stBld.append("minAvValue=").append(Utility.formatDouble(minAvValue, 2)).append('\n');
+    		stBld.append("maxAvValue=").append(Utility.formatDouble(maxAvValue, 2)).append('\n');
     		
     		double globalAvTimeGap = sumTimeGap / timeGapCount;
     		double variance = sumSqTimeGap / timeGapCount - globalAvTimeGap * globalAvTimeGap;
@@ -223,7 +223,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		for (Long timeGap : xactionTimeGaps) {
     			gapSum += timeGap;
         		sumTimeGap += timeGap;
-        		sumSqTimeGap += timeGap + timeGap;
+        		sumSqTimeGap += (timeGap * timeGap);
         		++timeGapCount;
     		}
     		avTimeGap = gapSum / xactionTimeGaps.size();
