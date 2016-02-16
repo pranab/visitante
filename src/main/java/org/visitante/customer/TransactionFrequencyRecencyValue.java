@@ -94,6 +94,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 		private int numAttributes;
 		private long timeGap;
 		private long now;
+		private List<Long> xactionTimeStamps = new ArrayList<Long>();
 		private List<Long> xactionTimeGaps = new ArrayList<Long>();
 		private List<Double> xactionValues = new ArrayList<Double>();
 		private long avTimeGap;
@@ -108,6 +109,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 		private long recency;
 		private long gapSum;
 		private double valueSum;
+		private int recencyCount;
 		
 		private static final long MS_PER_HOUR = 60L * 1000 * 1000;
 		private static final long MS_PER_DAY = MS_PER_HOUR * 24;
@@ -125,6 +127,8 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
         	numIDFields = Utility.intArrayFromString(config.get("trf.id.field.ordinals"), configDelim).length;
         	numAttributes = Utility.assertIntArrayConfigParam(config, "trf.quant.attr.list", configDelim, 
         			"missing quant attribute list").length;
+        	recencyCount = config.getInt("trf.recency.count", 1);
+        	
         	now = System.currentTimeMillis();
         	
         	minAvTimeGap = Long.MAX_VALUE;
@@ -162,6 +166,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
         protected void reduce(Tuple  key, Iterable<Tuple> values, Context context)
         		throws IOException, InterruptedException {
     		long lastTimeStamp = -1;
+    		xactionTimeStamps.clear();
     		xactionTimeGaps.clear();
     		xactionValues.clear();
     		for (Tuple val : values) {
@@ -172,6 +177,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     			}
     			lastTimeStamp = val.getLong(0);
     			xactionValues.add(Double.parseDouble(val.getString(1)));
+    			xactionTimeStamps.add(lastTimeStamp);
     		}
     		
     		//continue only if there are enough samples
@@ -183,7 +189,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 	    		averageValue();
 	    		
 	    		//recency
-	    		recency = now - lastTimeStamp;
+	    		recency =  findRecency();
 	    		recency = convertTimeUnit(recency);
 	    		
 	    		stBld.delete(0, stBld.length());
@@ -244,8 +250,31 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		minAvValue = avValue < minAvValue ? avValue : minAvValue;
     		maxAvValue = avValue > maxAvValue ? avValue : maxAvValue;
         }
+        
+        
+    	/**
+    	 * @return
+    	 */
+    	private long findRecency() {
+    		long recency = 0;
+    		
+    		//upper bound on recency count
+    		int size = xactionTimeStamps.size();
+    		int modRecencyCount = recencyCount > size / 2 ? size / 2 :  recencyCount;
+    		
+    		//time elapsed inverse weighted as we move away from recent transactions
+    		long sum = 0;
+    		for (int i = 1; i  <= modRecencyCount;  ++i) {
+    			sum += (now -  xactionTimeStamps.get(size -i))	 / i;
+    		}
+    		
+    		recency = sum / modRecencyCount;
+    		return recency;
+    	}
+    	
 	}
 
+	
 	/**
 	 * @param args
 	 */

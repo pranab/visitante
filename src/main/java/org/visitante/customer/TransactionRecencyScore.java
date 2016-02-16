@@ -87,7 +87,7 @@ public class TransactionRecencyScore extends Configured implements Tool {
          */
         protected void setup(Context context) throws IOException, InterruptedException {
         	Configuration config = context.getConfiguration();
-        	fieldDelimRegex = config.get("field.delim.regex", ",");
+        	fieldDelimRegex = Utility.getFieldDelimiter(config, "trs.field.delim.regex", "field.delim.regex", ",");
         	List<String[]> transStats = Utility.parseFileLines(config, "trs.xaction.stats.file.path", "=");
         	for (String[] items : transStats) {
         		if (items[0].equals("globalAvTimeGap")) {
