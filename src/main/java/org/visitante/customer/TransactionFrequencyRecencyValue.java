@@ -110,6 +110,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 		private long gapSum;
 		private double valueSum;
 		private int recencyCount;
+		private float recencyUpperBoundFraction;
 		
 		private static final long MS_PER_HOUR = 60L * 1000 * 1000;
 		private static final long MS_PER_DAY = MS_PER_HOUR * 24;
@@ -128,6 +129,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
         	numAttributes = Utility.assertIntArrayConfigParam(config, "trf.quant.attr.list", configDelim, 
         			"missing quant attribute list").length;
         	recencyCount = config.getInt("trf.recency.count", 1);
+        	recencyUpperBoundFraction = config.getFloat("trf.recency.upper.bound.fraction",  (float)0.5);
         	
         	now = System.currentTimeMillis();
         	
@@ -260,15 +262,16 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		
     		//upper bound on recency count
     		int size = xactionTimeStamps.size();
-    		int modRecencyCount = recencyCount > size / 2 ? size / 2 :  recencyCount;
+    		int upBound = (int)(recencyUpperBoundFraction * size);
+    		int modRecencyCount = recencyCount > upBound ? upBound :  recencyCount;
     		
     		//time elapsed inverse weighted as we move away from recent transactions
     		long sum = 0;
     		for (int i = 1; i  <= modRecencyCount;  ++i) {
     			sum += (now -  xactionTimeStamps.get(size -i))	 / i;
     		}
-    		
     		recency = sum / modRecencyCount;
+ 
     		return recency;
     	}
     	

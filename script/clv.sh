@@ -8,7 +8,7 @@ HDFS_BASE_DIR=/user/pranab/clv
 case "$1" in
 
 "genInp")
-	 ./purchase.pyo  $2 $3 $4 $5 > $6
+	 ./purchase.py  $2 $3 $4 $5 > $6
 	 ls -l $6
 ;;
 
@@ -26,6 +26,8 @@ case "$1" in
 	echo "input $IN_PATH output $OUT_PATH"
 	hadoop fs -rmr $OUT_PATH
 	echo "removed output dir"
+	hadoop fs -rm $HDFS_BASE_DIR/stat/*
+	echo "cleaned stat output dir"
 	hadoop jar $JAR_NAME  $CLASS_NAME -Dconf.path=$PROP_FILE  $IN_PATH  $OUT_PATH
 	hadoop fs -rmr $HDFS_BASE_DIR/freq/_logs
 	hadoop fs -rmr $HDFS_BASE_DIR/freq/_SUCCESS
@@ -40,8 +42,6 @@ case "$1" in
 	echo "input $IN_PATH output $OUT_PATH"
 	hadoop fs -rmr $OUT_PATH
 	echo "removed output dir"
-	hadoop fs -rm $HDFS_BASE_DIR/stat/*
-	echo "cleaned stat output dir"
 	hadoop jar $JAR_NAME  $CLASS_NAME -Dconf.path=$PROP_FILE  $IN_PATH  $OUT_PATH
 	hadoop fs -rmr $HDFS_BASE_DIR/recency/_logs
 	hadoop fs -rmr $HDFS_BASE_DIR/recency/_SUCCESS
@@ -57,6 +57,8 @@ case "$1" in
 	hadoop fs -rmr $OUT_PATH
 	echo "removed output dir"
 	hadoop jar $CHOMBO_JAR_NAME  $CLASS_NAME -Dconf.path=$PROP_FILE  $IN_PATH  $OUT_PATH
+	hadoop fs -rmr $HDFS_BASE_DIR/norm/_logs
+	hadoop fs -rmr $HDFS_BASE_DIR/norm/_SUCCESS
 	hadoop fs -ls $HDFS_BASE_DIR/norm
 ;;
 
