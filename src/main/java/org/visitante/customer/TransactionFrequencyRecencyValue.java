@@ -18,6 +18,8 @@
 package org.visitante.customer;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,7 +95,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
 		private int numIDFields;
 		private int numAttributes;
 		private long timeGap;
-		private long now;
+		private long refTimeStamp;
 		private List<Long> xactionTimeStamps = new ArrayList<Long>();
 		private List<Long> xactionTimeGaps = new ArrayList<Long>();
 		private List<Double> xactionValues = new ArrayList<Double>();
@@ -131,7 +133,18 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
         	recencyCount = config.getInt("trf.recency.count", 1);
         	recencyUpperBoundFraction = config.getFloat("trf.recency.upper.bound.fraction",  (float)0.5);
         	
-        	now = System.currentTimeMillis();
+        	//reference date time for recency calculation
+        	if (null != config.get("trf.recency.ref.date")) {
+        		String dateFormatStr = config.get("trf.recency.ref.date.format.str",  "yyyy-MM-dd HH:mm:ss");
+        		SimpleDateFormat refDateFormat = new SimpleDateFormat(dateFormatStr);
+        		try {
+        			refTimeStamp = Utility.getEpochTime(config.get("trf.recency.ref.date"), false, refDateFormat, 0);
+        		} catch (ParseException ex) {
+        			throw new IOException("parsing error with date time field", ex);
+        		}
+        	} else {
+        		refTimeStamp = System.currentTimeMillis();
+        	}
         	
         	minAvTimeGap = Long.MAX_VALUE;
         	maxAvTimeGap = Long.MIN_VALUE;
@@ -268,7 +281,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		//time elapsed inverse weighted as we move away from recent transactions
     		long sum = 0;
     		for (int i = 1; i  <= modRecencyCount;  ++i) {
-    			sum += (now -  xactionTimeStamps.get(size -i))	 / i;
+    			sum += (refTimeStamp -  xactionTimeStamps.get(size -i))	 / i;
     		}
     		recency = sum / modRecencyCount;
  
