@@ -17,11 +17,13 @@ buyingCustPercent = int(sys.argv[3])
 avXactionAmount = float(sys.argv[4])
 
 hiValueCustCount = custCount / 10
-hiValueCustAvXactionAmount = avXactionAmount * 2.0
+hiValueCustAvXactionAmount = avXactionAmount * 2.5
 
 customers = []
 hiValueCustomers = []
 churningCustomers = set()
+mostValuableCustomers = set()
+
 minPerDay = 24 * 60
 
 for i in range(0,custCount):
@@ -33,6 +35,9 @@ for i in range(0,hiValueCustCount):
 for i in range(0,5):
 	churningCustomers.add(selectRandomFromList(customers))
 #print churningCustomers
+
+for i in range(0,5):
+	mostValuableCustomers.add(selectRandomFromList(hiValueCustomers))
 
 dailyBuyCount = int((custCount * buyingCustPercent) / 100)
 buyIntervalMin = minPerDay / dailyBuyCount
@@ -48,22 +53,31 @@ xactionDateEpoch = int(xactionDate.strftime("%s"))
 nowEpoch = int(now.strftime("%s"))
 idleTime = 30 * 24 * 60 * 60
 cust = set()
+mostValCust = set()
+
 while (xactionDateEpoch < nowEpoch):
 	xactID = genID(14)
 	churning = False;
 	if(randint(0,100) < 10):
 		custID = selectRandomFromList(hiValueCustomers)
 		if (randint(0,100) < 10):
-			xactionAmount = hiValueCustAvXactionAmount +  random() * (2.0 * hiValueCustAvXactionAmount)
+			xactionAmount = hiValueCustAvXactionAmount +  random() * (2.5 * hiValueCustAvXactionAmount)
 		else:
 			xactionAmount = hiValueCustAvXactionAmount +  random() * (0.3 * hiValueCustAvXactionAmount)
+
+		#most valuable customers
+		mostValCust.clear()
+		mostValCust.add(custID)
+		if (mostValuableCustomers.issuperset(mostValCust)):
+			xactionAmount = xactionAmount + 50 * (1.5 + random())
 	else:
 		custID = selectRandomFromList(customers)
 		if (randint(0,100) < 10):
-			xactionAmount = hiValueCustAvXactionAmount +  random() * (2.0 * avXactionAmount)
+			xactionAmount = avXactionAmount +  random() * (2.0 * avXactionAmount)
 		else:
 			xactionAmount = avXactionAmount +  random() * (0.5 * avXactionAmount)
 		
+		#churning customers
 		cust.clear()
 		cust.add(custID)
 		if (((nowEpoch - xactionDateEpoch) <  idleTime) and (churningCustomers.issuperset(cust))):

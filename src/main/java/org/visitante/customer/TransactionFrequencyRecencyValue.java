@@ -276,15 +276,11 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
     		//upper bound on recency count
     		int size = xactionTimeStamps.size();
     		int upBound = (int)(recencyUpperBoundFraction * size);
+    		upBound = upBound == 0 ? 1 : upBound;
     		int modRecencyCount = recencyCount > upBound ? upBound :  recencyCount;
     		
     		//time elapsed inverse weighted as we move away from recent transactions
-    		long sum = 0;
-    		for (int i = 1; i  <= modRecencyCount;  ++i) {
-    			sum += (refTimeStamp -  xactionTimeStamps.get(size -i))	 / i;
-    		}
-    		recency = sum / modRecencyCount;
- 
+    		recency = (refTimeStamp -  xactionTimeStamps.get(size - modRecencyCount))	 / modRecencyCount;
     		return recency;
     	}
     	
