@@ -1,0 +1,48 @@
+This tutorial is for computing customer lifetime value. It uses customet transaction 
+history to compute CLV score using multiple map reduvce jobs
+
+Environment
+===========
+Please make changes in path, file names etc depending on your environment
+in clv.sh. 
+
+Generate customer transaction data
+==================================
+./clv.sh genInp <num_of_customers> <num_of_transactions>  <buying _cust_precentage_in_a_day> 
+<average_transaction_amount>  <output_file>
+
+example:
+num_of_customers = 500
+num_of_transactions = 20000
+buying _cust_precentage_in_a_day = 10
+average_transaction_amount = 100
+output_file = purch.txt
+
+Load input data to HDFS
+=======================
+./clv.sh copyInp <transaction_data_file>
+
+transaction_data_file = purch.txt
+
+Transaction frequency, amount and recency map reduce
+====================================================
+./clv.sh transFreq
+
+Transaction recency score map reduce
+====================================
+./clv.sh recencyScore
+
+Normalizer map reduce
+=====================
+./clv.sh norm
+
+lifetime value map reduce
+=========================
+./clv.sh lifeTimeValue
+
+Configuration
+=============
+Configutation properiies are in visitante.properties. Make changes according to your
+needs.
+
+
