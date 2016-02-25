@@ -32,6 +32,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.chombo.util.ExponentialDistribution;
+import org.chombo.util.ProbabilityDistribution;
 import org.chombo.util.StandardNormalDistribution;
 import org.chombo.util.Utility;
 
@@ -78,7 +80,7 @@ public class TransactionRecencyScore extends Configured implements Tool {
         private double recencyScore;
         private double globalAvTimeGap = -1.0;
         private double globalStdDevTimeGap = -1.0;
-        private StandardNormalDistribution normalDistr = new StandardNormalDistribution();
+        private ProbabilityDistribution transGapDistr;
         private static final int RECENCY_FIELD = 2;
         
         
@@ -88,6 +90,9 @@ public class TransactionRecencyScore extends Configured implements Tool {
         protected void setup(Context context) throws IOException, InterruptedException {
         	Configuration config = context.getConfiguration();
         	fieldDelimRegex = Utility.getFieldDelimiter(config, "trs.field.delim.regex", "field.delim.regex", ",");
+        	
+        	
+        	//trans stats
         	List<String[]> transStats = Utility.parseFileLines(config, "trs.xaction.stats.file.path", "=");
         	for (String[] items : transStats) {
         		if (items[0].equals("globalAvTimeGap")) {
@@ -98,6 +103,16 @@ public class TransactionRecencyScore extends Configured implements Tool {
         	}
         	if (globalAvTimeGap < 0 && globalStdDevTimeGap < 0) {
         		throw new IllegalStateException("transaction time gap global stats not found");
+        	}
+        	
+        	//trans gap prob distr
+        	String distrType = config.get("trs.trans.gap.prob.distr", "normal");
+        	if (distrType.equals("normal")) {
+        		transGapDistr = new StandardNormalDistribution(globalAvTimeGap, globalStdDevTimeGap);
+        	} else if (distrType.equals("exponential")) {
+        		transGapDistr = new ExponentialDistribution(globalAvTimeGap);
+        	} else {
+        		throw new IllegalArgumentException("invalid probability distribution");
         	}
         }
 
@@ -110,8 +125,7 @@ public class TransactionRecencyScore extends Configured implements Tool {
             items  =  value.toString().split(fieldDelimRegex);
             
             recency = Double.parseDouble(items[RECENCY_FIELD]);
-            recency = (recency - globalAvTimeGap) / globalStdDevTimeGap;
-            recencyScore = 1.0 - normalDistr.getDistr(recency);
+            recencyScore = 1.0 - transGapDistr.getDistr(recency);
             items[RECENCY_FIELD] = Utility.formatDouble(recencyScore, 3);
             
             outVal.set(Utility.join(items));
