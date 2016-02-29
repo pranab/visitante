@@ -50,8 +50,7 @@ import org.hoidla.util.TemporalClusterFinder;
  *
  */
 public class LifeCycleFinder extends Configured implements Tool {
-	private static String configDelim = ",";
-    private static final Logger LOG = Logger.getLogger(TransactionFrequencyRecencyValue.class);
+    private static final Logger LOG = Logger.getLogger(LifeCycleFinder.class);
 
 	@Override
 	public int run(String[] args) throws Exception {
@@ -77,7 +76,7 @@ public class LifeCycleFinder extends Configured implements Tool {
         job.setGroupingComparatorClass(SecondarySort.TuplePairGroupComprator.class);
         job.setPartitionerClass(SecondarySort.TuplePairPartitioner.class);
         
-        int numReducer = job.getConfiguration().getInt("clf.num.reducer", -1);
+        int numReducer = job.getConfiguration().getInt("lcf.num.reducer", -1);
         numReducer = -1 == numReducer ? job.getConfiguration().getInt("num.reducer", 1) : numReducer;
         job.setNumReduceTasks(numReducer);
 
@@ -96,16 +95,15 @@ public class LifeCycleFinder extends Configured implements Tool {
 		private long timeHorizonStart;
 		private long timeHorizonEnd;
 		private List<Long> visitTimeStamps = new ArrayList<Long>();
-		private String lifeCycleOutput;
+		private String lifeCycleOutputType;
+		private boolean outputLifeCycleLength;
 		private String timeGapUnit;
 		private int numIDFields;
 		private int numAttributes;
 		private long minInterCycleGap;
-		private TemporalClusterFinder clusterFinder = new TemporalClusterFinder();
-		
-		
-		private static final long MS_PER_HOUR = 60L * 1000 * 1000;
-		private static final long MS_PER_DAY = MS_PER_HOUR * 24;
+		private TemporalClusterFinder clusterFinder;
+		private long startTime;
+		private long endTime;
 		
 		/* (non-Javadoc)
 		 * @see org.apache.hadoop.mapreduce.Reducer#setup(org.apache.hadoop.mapreduce.Reducer.Context)
@@ -116,8 +114,8 @@ public class LifeCycleFinder extends Configured implements Tool {
             	LOG.setLevel(Level.DEBUG);
             }
 			fieldDelim = config.get("field.delim.out", ",");
-        	timeGapUnit = config.get("lcf.time.gap.unit");
-        	numIDFields = Utility.intArrayFromString(config.get("lcf.id.field.ordinals"), configDelim).length;
+        	timeGapUnit = config.get("lcf.time.gap.unit", "day");
+        	numIDFields = Utility.intArrayFromString(config.get("lcf.id.field.ordinals"), Utility.configDelim).length;
         	int[] attributes = Utility.intArrayFromString(config.get("lcf.quant.attr.list"), Utility.configDelim);
         	numAttributes = null != attributes ? attributes.length : 0;
 
@@ -128,10 +126,11 @@ public class LifeCycleFinder extends Configured implements Tool {
     			timeHorizonStart = Utility.getEpochTime(config.get("lcf.time.horizon.start"), false, refDateFormat, 0);
     			timeHorizonEnd = Utility.getEpochTime(config.get("lcf.time.horizon.end"), false, refDateFormat, 0);
     		} catch (ParseException ex) {
-    			throw new IOException("parsing error with date time field", ex);
+    			throw new IOException("parsing error with date time configuration parameter", ex);
     		}
     		
-    		lifeCycleOutput = config.get("lcf.life.cycle.output", "current");
+    		lifeCycleOutputType = config.get("lcf.life.cycle.output.type", "current");
+    		outputLifeCycleLength = config.getBoolean("lcf.output.life.cycle.length", false);
     		
     		//min inter cycle time gap 
     		NumericalAttrStatsManager statsManager = new NumericalAttrStatsManager(config, "lcf.visit.time.gap.stats.file.path", 
@@ -140,6 +139,8 @@ public class LifeCycleFinder extends Configured implements Tool {
     		double timeGapStdDev = statsManager.getStdDev(1);
 			double maxZscore = config.getFloat("clf.max.zscore", (float)3.0);
 			minInterCycleGap = (long)(timeGapMean + maxZscore * timeGapStdDev);
+			
+			clusterFinder = new TemporalClusterFinder(timeHorizonStart, timeHorizonEnd, minInterCycleGap);
 		}
 		
         /* (non-Javadoc)
@@ -152,18 +153,81 @@ public class LifeCycleFinder extends Configured implements Tool {
     			visitTimeStamps.add(val.getLong(0));
     		}
     		
-    		clusterFinder.initialize(visitTimeStamps, timeHorizonStart, timeHorizonEnd, minInterCycleGap);
+    		//find lifecycles
+    		clusterFinder.initialize(visitTimeStamps);
     		List<TemporalCluster> clusters = clusterFinder.findClusters();
-    		if (lifeCycleOutput.equals("current")) {
+    		if (lifeCycleOutputType.equals("current")) {
+	    		TemporalCluster lastCluster = clusters.get(clusters.size() - 1);
+	    		if (!lastCluster.isEndFound()) {
+	    			emitKey(key);
+	    			if (outputLifeCycleLength) {
+		    			emitTimeLength(lastCluster.getStartTime(), timeHorizonEnd);
+	    			} else {
+	    				emitTimeBoundaries(lastCluster.getStartTime(), timeHorizonEnd);
+	    			}
+		        	outVal.set(stBld.toString());
+					context.write(NullWritable.get(), outVal);
+	    		}
     			
-    		} else if (lifeCycleOutput.equals("all")) {
-    			
-    		} else if (lifeCycleOutput.equals("complete")) {
-    			
+    		} else if (lifeCycleOutputType.equals("all")) {
+    			for (TemporalCluster cluster : clusters) {
+	    			emitKey(key);
+    				startTime = cluster.isStartFound() ? cluster.getStartTime() : timeHorizonStart;
+    				endTime = cluster.isEndFound() ? cluster.getEndTime() : timeHorizonEnd;
+	    			if (outputLifeCycleLength) {
+		    			emitTimeLength(startTime, endTime);
+	    			} else {
+	    				emitTimeBoundaries(startTime, endTime);
+	    			}
+		        	outVal.set(stBld.toString());
+					context.write(NullWritable.get(), outVal);
+    			}
+    		} else if (lifeCycleOutputType.equals("complete")) {
+    			for (TemporalCluster cluster : clusters) {
+    				if (cluster.isStartFound() && cluster.isEndFound()) {
+    	    			emitKey(key);
+    	    			if (outputLifeCycleLength) {
+    		    			emitTimeLength(cluster.getStartTime(), cluster.getEndTime());
+    	    			} else {
+    	    				emitTimeBoundaries(cluster.getStartTime(), cluster.getEndTime());
+    	    			}
+    		        	outVal.set(stBld.toString());
+    					context.write(NullWritable.get(), outVal);
+    				}
+    			}
     		} else {
-    			
+    			throw new IllegalStateException("invalid lifecycle output type");
     		}
-        }		
+        }	
+        
+        /**
+         * @param key
+         */
+        private void emitKey(Tuple  key) {
+    		stBld.delete(0, stBld.length());
+    		for (int i = 0; i < numIDFields; ++i) {
+    			stBld.append(key.getString(i)).append(fieldDelim);
+    		}
+        }
+        
+        /**
+         * @param startTime
+         * @param endTime
+         */
+        private void emitTimeLength(long startTime, long endTime) {
+			long timeLength = endTime - startTime;
+			timeLength = Utility.convertTimeUnit(timeLength, timeGapUnit);
+			stBld.append(timeLength);
+        }
+        
+        /**
+         * @param startTime
+         * @param endTime
+         */
+        private void emitTimeBoundaries(long startTime, long endTime) {
+			stBld.append(Utility.convertTimeUnit(startTime, timeGapUnit)).append(fieldDelim).
+				append(Utility.convertTimeUnit(endTime, timeGapUnit));
+        }
 	}
 	
 	/**
