@@ -55,7 +55,7 @@ public class LifeCycleFinder extends Configured implements Tool {
 	@Override
 	public int run(String[] args) throws Exception {
         Job job = new Job(getConf());
-        String jobName = "Average gap between transaction, average transaction value and time since most recent transaction";
+        String jobName = "Finds lifecycles from visitation history";
         job.setJobName(jobName);
         
         job.setJarByClass(LifeCycleFinder.class);
@@ -104,6 +104,7 @@ public class LifeCycleFinder extends Configured implements Tool {
 		private TemporalClusterFinder clusterFinder;
 		private long startTime;
 		private long endTime;
+		private boolean useTimeHorizon;
 		
 		/* (non-Javadoc)
 		 * @see org.apache.hadoop.mapreduce.Reducer#setup(org.apache.hadoop.mapreduce.Reducer.Context)
@@ -139,8 +140,9 @@ public class LifeCycleFinder extends Configured implements Tool {
     		double timeGapStdDev = statsManager.getStdDev(1);
 			double maxZscore = config.getFloat("clf.max.zscore", (float)3.0);
 			minInterCycleGap = (long)(timeGapMean + maxZscore * timeGapStdDev);
-			
 			clusterFinder = new TemporalClusterFinder(timeHorizonStart, timeHorizonEnd, minInterCycleGap);
+			
+			useTimeHorizon = config.getBoolean("lcf.use.time.horizon.for.cluster", true);
 		}
 		
         /* (non-Javadoc)
@@ -160,27 +162,26 @@ public class LifeCycleFinder extends Configured implements Tool {
 	    		TemporalCluster lastCluster = clusters.get(clusters.size() - 1);
 	    		if (!lastCluster.isEndFound()) {
 	    			emitKey(key);
-	    			if (outputLifeCycleLength) {
-		    			emitTimeLength(lastCluster.getStartTime(), timeHorizonEnd);
-	    			} else {
-	    				emitTimeBoundaries(lastCluster.getStartTime(), timeHorizonEnd);
-	    			}
-		        	outVal.set(stBld.toString());
-					context.write(NullWritable.get(), outVal);
-	    		}
-    			
-    		} else if (lifeCycleOutputType.equals("all")) {
-    			for (TemporalCluster cluster : clusters) {
-	    			emitKey(key);
-    				startTime = cluster.isStartFound() ? cluster.getStartTime() : timeHorizonStart;
-    				endTime = cluster.isEndFound() ? cluster.getEndTime() : timeHorizonEnd;
+	    			startTime = lastCluster.getStartTime();
+	    			endTime = useTimeHorizon ? timeHorizonEnd  : -1;
 	    			if (outputLifeCycleLength) {
 		    			emitTimeLength(startTime, endTime);
 	    			} else {
 	    				emitTimeBoundaries(startTime, endTime);
 	    			}
-		        	outVal.set(stBld.toString());
-					context.write(NullWritable.get(), outVal);
+	    			emit(context);  
+	    		}
+    		} else if (lifeCycleOutputType.equals("all")) {
+    			for (TemporalCluster cluster : clusters) {
+	    			emitKey(key);
+    				startTime = cluster.isStartFound() ? cluster.getStartTime() : (useTimeHorizon ? timeHorizonStart  : -1);
+    				endTime = cluster.isEndFound() ? cluster.getEndTime() : (useTimeHorizon ? timeHorizonEnd  : -1);
+	    			if (outputLifeCycleLength) {
+		    			emitTimeLength(startTime, endTime);
+	    			} else {
+	    				emitTimeBoundaries(startTime, endTime);
+	    			}
+	    			emit(context);  
     			}
     		} else if (lifeCycleOutputType.equals("complete")) {
     			for (TemporalCluster cluster : clusters) {
@@ -191,9 +192,8 @@ public class LifeCycleFinder extends Configured implements Tool {
     	    			} else {
     	    				emitTimeBoundaries(cluster.getStartTime(), cluster.getEndTime());
     	    			}
-    		        	outVal.set(stBld.toString());
-    					context.write(NullWritable.get(), outVal);
-    				}
+    	    			emit(context);   
+    	    		}
     			}
     		} else {
     			throw new IllegalStateException("invalid lifecycle output type");
@@ -215,8 +215,13 @@ public class LifeCycleFinder extends Configured implements Tool {
          * @param endTime
          */
         private void emitTimeLength(long startTime, long endTime) {
-			long timeLength = endTime - startTime;
-			timeLength = Utility.convertTimeUnit(timeLength, timeGapUnit);
+			long timeLength = 0;
+			if (startTime < 0 || endTime < 0) {
+				timeLength = -1;
+			} else {
+				timeLength =  endTime - startTime;
+				timeLength = Utility.convertTimeUnit(timeLength, timeGapUnit);
+			}
 			stBld.append(timeLength);
         }
         
@@ -227,6 +232,11 @@ public class LifeCycleFinder extends Configured implements Tool {
         private void emitTimeBoundaries(long startTime, long endTime) {
 			stBld.append(Utility.convertTimeUnit(startTime, timeGapUnit)).append(fieldDelim).
 				append(Utility.convertTimeUnit(endTime, timeGapUnit));
+        }
+        
+        private void emit(Context context) throws IOException, InterruptedException {
+        	outVal.set(stBld.toString());
+			context.write(NullWritable.get(), outVal);
         }
 	}
 	
