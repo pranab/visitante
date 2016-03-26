@@ -96,7 +96,7 @@ public class SessionSummarizer  extends Configured implements Tool {
 		
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim.out", "[]");
-        	flow = context.getConfiguration().get("flow.sequence").split(",");
+        	flow = context.getConfiguration().get("ses.flow.sequence").split(",");
        }
 		
     	protected void reduce(TextLong key, Iterable<Tuple> values, Context context)

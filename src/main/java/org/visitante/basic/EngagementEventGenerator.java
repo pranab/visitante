@@ -105,14 +105,14 @@ public class EngagementEventGenerator extends Configured implements Tool {
         	fieldDelim = config.get("field.delim.out", ",");
         	
         	//engaement events e.g. page browsed
-        	String[] engageEvents = config.get("engagement.events").split(",");
+        	String[] engageEvents = config.get("eeg.engagement.events").split(",");
         	for (String engageEvent : engageEvents) {
         		String[] items = engageEvent.split(":");
         		eventPatterns.add(new EventPattern(items));
         	}
-        	userIDOrd = config.getInt("user.id.ord", 0);
-        	urlOrd = config.getInt("url.ord", 1);
-        	timeStampOrd = config.getInt("time.stamp.ord", 2);
+        	userIDOrd = config.getInt("eeg.user.id.ord", 0);
+        	urlOrd = config.getInt("eeg.url.ord", 1);
+        	timeStampOrd = config.getInt("eeg.time.stamp.ord", 2);
        }
 		
     	/* (non-Javadoc)

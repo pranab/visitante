@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -111,8 +112,9 @@ public class SessionExtractor extends Configured implements Tool {
         private String cookieSeparator;
         
         protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelimRegex = context.getConfiguration().get("field.delim.regex", "\\s+");
-        	String fieldMetaSt = context.getConfiguration().get("field.meta");
+        	Configuration config = context.getConfiguration();
+        	fieldDelimRegex = config.get("field.delim.regex", "\\s+");
+        	String fieldMetaSt = config.get("see.field.meta");
         	System.out.println("fieldMetaSt:" + fieldMetaSt);
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
@@ -122,9 +124,9 @@ public class SessionExtractor extends Configured implements Tool {
             urlOrd=new Integer(filedMetaData.get("url"));
             referrerOrd=new Integer(filedMetaData.get("referrer"));
             dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            sessionIDName = context.getConfiguration().get("session.id.name");
-            userIDName = context.getConfiguration().get("user.id.name");
-            cookieSeparator = context.getConfiguration().get("cookie.separator", ";\\+");
+            sessionIDName = config.get("see.session.id.name");
+            userIDName = config.get("see.user.id.name");
+            cookieSeparator = config.get("see.cookie.separator", ";\\+");
        }
 
         @Override

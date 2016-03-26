@@ -63,7 +63,7 @@ public class LifeCycleFinder extends Configured implements Tool {
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-        Utility.setConfiguration(job.getConfiguration(), "chombo");
+        Utility.setConfiguration(job.getConfiguration(), "visitante");
         job.setMapperClass(TimeGapSequenceGenerator.TimeGapMapper.class);
         job.setReducerClass(LifeCycleFinder.FinderReducer.class);
         

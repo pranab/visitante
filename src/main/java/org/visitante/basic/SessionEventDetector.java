@@ -116,8 +116,8 @@ public class SessionEventDetector  extends Configured implements Tool {
             	LOG.setLevel(Level.DEBUG);
             }
 
-        	beforeMatchContextSize = config.getInt("before.match.context.size", 3);
-        	afterMatchContextSize = config.getInt("after.match.context.size", 2);
+        	beforeMatchContextSize = config.getInt("sed.before.match.context.size", 3);
+        	afterMatchContextSize = config.getInt("sed.after.match.context.size", 2);
         	maxBufferSize = beforeMatchContextSize + afterMatchContextSize + 1;
         	
         	//patterns
@@ -186,27 +186,27 @@ public class SessionEventDetector  extends Configured implements Tool {
         protected void setup(Context context) throws IOException, InterruptedException {
         	Configuration config = context.getConfiguration();
         	fieldDelimRegex = config.get("field.delim.regex", "\\s+");
-        	String fieldMetaSt = config.get("field.meta");
+        	String fieldMetaSt = config.get("sed.field.meta");
         	System.out.println("fieldMetaSt:" + fieldMetaSt);
         	
         	filedMetaData=Utility.deserializeMap(fieldMetaSt, itemDelim, keyDelim);
         	cookieOrd =new Integer(filedMetaData.get("cookie"));
             dateOrd =new Integer(filedMetaData.get("date"));
             timeOrd =new Integer(filedMetaData.get("time"));
-            String dateFormatStr = config.get("date.format.str",  "yyyy-MM-dd HH:mm:ss");
+            String dateFormatStr = config.get("sed.date.format.str",  "yyyy-MM-dd HH:mm:ss");
             dateFormat = new SimpleDateFormat(dateFormatStr);
-            sessionIDName = config.get("session.id.name");
-            userIDName = config.get("user.id.name");
-            cookieSeparator = config.get("cookie.separator", ";\\+");
+            sessionIDName = config.get("sed.session.id.name");
+            userIDName = config.get("sed.user.id.name");
+            cookieSeparator = config.get("sed.cookie.separator", ";\\+");
             
             //date time constraint
             try {
-	            String minDateTimeStr = config.get("min.date.time");
+	            String minDateTimeStr = config.get("sed.min.date.time");
 	            if (null != minDateTimeStr) {
 	            	minDateTime = dateFormat.parse(minDateTimeStr).getTime();
 	            }
             
-	            String maxDateTimeStr = config.get("max.date.time");
+	            String maxDateTimeStr = config.get("sed.max.date.time");
 	            if (null != maxDateTimeStr) {
 	            	maxDateTime = dateFormat.parse(maxDateTimeStr).getTime();
 	            }
@@ -288,8 +288,8 @@ public class SessionEventDetector  extends Configured implements Tool {
             	LOG.setLevel(Level.DEBUG);
             }
             fieldDelim = config.get("field.delim.out", ",");
-        	beforeMatchContextSize = config.getInt("before.match.context.size", 3);
-        	afterMatchContextSize = config.getInt("after.match.context.size", 2);
+        	beforeMatchContextSize = config.getInt("sed.before.match.context.size", 3);
+        	afterMatchContextSize = config.getInt("sed.after.match.context.size", 2);
         	
         	//patterns
         	buildPatterns(config, patterns);

@@ -79,7 +79,7 @@ public class RatingEstimator extends Configured implements Tool {
         private String fieldDelimRegex;
 
         protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelimRegex = context.getConfiguration().get("re.field.delim.regex", ",");
+        	fieldDelimRegex = context.getConfiguration().get("res.field.delim.regex", ",");
         }
         
         protected void map(LongWritable key, Text value, Context context)
@@ -105,9 +105,9 @@ public class RatingEstimator extends Configured implements Tool {
 		
 		protected void setup(Context context) throws IOException, InterruptedException {
         	fieldDelim = context.getConfiguration().get("field.delim.out", ",");
-        	outFormat = new Integer(context.getConfiguration().get("re.out.format", "1"));
+        	outFormat = new Integer(context.getConfiguration().get("res.out.format", "1"));
         	
-        	String[] maps = context.getConfiguration().get("time.spent.mapping").split(",");
+        	String[] maps = context.getConfiguration().get("res.time.spent.mapping").split(",");
         	ImmutablePair<Integer, Integer> entry = null;
         	for (String map : maps) {
         		String[] mapItems = map.split(":");
