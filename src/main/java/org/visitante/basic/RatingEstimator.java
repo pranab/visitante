@@ -72,6 +72,10 @@ public class RatingEstimator extends Configured implements Tool {
         return status;
 	}
 	
+	/**
+	 * @author pranab
+	 *
+	 */
 	public static class EventMapper extends Mapper<LongWritable, Text, TextPair, IntPair> {
 		private String[] items;
 		private TextPair outKey = new TextPair();
@@ -84,14 +88,18 @@ public class RatingEstimator extends Configured implements Tool {
         
         protected void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
-                items  =  value.toString().split(fieldDelimRegex);
-                outKey.set(items[0],items[1]);
-                outVal.set(new Integer(items[2]), new Integer(items[3]));
-   	   			context.write(outKey, outVal);
+        	items  =  value.toString().split(fieldDelimRegex);
+            outKey.set(items[0],items[1]);
+            outVal.set(new Integer(items[2]), new Integer(items[3]));
+   	   		context.write(outKey, outVal);
         }  
         
 	}
 	
+	/**
+	 * @author pranab
+	 *
+	 */
 	public static class EventReducer extends Reducer<TextPair, IntPair, NullWritable, Text> {
 		private Text outVal = new Text();
 		private String fieldDelim;

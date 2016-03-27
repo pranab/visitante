@@ -75,7 +75,7 @@ public class TransactionFrequencyRecencyValue extends Configured implements Tool
         job.setGroupingComparatorClass(SecondarySort.TuplePairGroupComprator.class);
         job.setPartitionerClass(SecondarySort.TuplePairPartitioner.class);
         
-        int numReducer = job.getConfiguration().getInt("tfr.num.reducer", -1);
+        int numReducer = job.getConfiguration().getInt("trf.num.reducer", -1);
         numReducer = -1 == numReducer ? job.getConfiguration().getInt("num.reducer", 1) : numReducer;
         job.setNumReduceTasks(numReducer);
 

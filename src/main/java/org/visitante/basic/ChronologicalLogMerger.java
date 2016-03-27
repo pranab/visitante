@@ -99,12 +99,13 @@ public class ChronologicalLogMerger extends Configured implements Tool {
          */
         protected void setup(Context context) throws IOException, InterruptedException {
            	Configuration config = context.getConfiguration();
-            String dateTimeRegex = config.get("date.time.regex", "\\.*(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\.*");
+            String dateTimeRegex = config.get("clm.date.time.regex", "\\.*(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\.*");
             dateTimePattern = Pattern.compile(dateTimeRegex);
-            String dateTimeFormatStr = config.get("date.format.str",  "yyyy-MM-dd HH:mm:ss");
+            String dateTimeFormatStr = config.get("clm.date.format.str",  "yyyy-MM-dd HH:mm:ss");
             dateFormat = new SimpleDateFormat(dateTimeFormatStr);
             
-            fileSourceIdSep = config.get("file.source.id.sep", "_");
+            //file name prefixed with ID of source (e.g hostname)
+            fileSourceIdSep = config.get("clm.file.source.id.sep", "_");
             String fileName = ((FileSplit)context.getInputSplit()).getPath().getName();
             fileSourceId = fileName.split(fileSourceIdSep)[0];
         }

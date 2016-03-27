@@ -158,7 +158,7 @@ public class RetentionRate extends Configured implements Tool {
             if (config.getBoolean("debug.on", false)) {
             	LOG.setLevel(Level.DEBUG);
             }
-        	numIDFields = Utility.intArrayFromString(config.get("lcf.id.field.ordinals"), Utility.configDelim).length;
+        	numIDFields = Utility.intArrayFromString(config.get("rer.id.field.ordinals"), Utility.configDelim).length;
 		}
 		
         /* (non-Javadoc)
@@ -203,7 +203,7 @@ public class RetentionRate extends Configured implements Tool {
             	LOG.setLevel(Level.DEBUG);
             }
 			fieldDelim = config.get("field.delim.out", ",");
-        	numIDFields = Utility.intArrayFromString(config.get("lcf.id.field.ordinals"), Utility.configDelim).length;
+        	numIDFields = Utility.intArrayFromString(config.get("rer.id.field.ordinals"), Utility.configDelim).length;
 		}
 		
         /* (non-Javadoc)

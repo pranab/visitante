@@ -83,7 +83,7 @@ public class UserSessionSummary extends Configured implements Tool {
         private Long timeStart;
         
         protected void setup(Context context) throws IOException, InterruptedException {
-        	fieldDelimRegex = context.getConfiguration().get("us.field.delim.regex", ",");
+        	fieldDelimRegex = context.getConfiguration().get("uss.field.delim.regex", ",");
         }
  
         @Override
