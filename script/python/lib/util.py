@@ -17,6 +17,12 @@ def genID(len):
 		
 def selectRandomFromList(list):
 	return list[randint(0, len(list)-1)]
+
+def selectRandomFromList(list, excludes):
+	done = false
+	while not done:
+		item =list[randint(0, len(list)-1)]
+		
 	
 def selectRandomSubListFromList(list, num):
 	sel = selectRandomFromList(list)

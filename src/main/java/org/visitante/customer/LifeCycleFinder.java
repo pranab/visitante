@@ -37,7 +37,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.chombo.mr.TimeGapSequenceGenerator;
-import org.chombo.util.NumericalAttrStatsManager;
+import org.chombo.stats.NumericalAttrStatsManager;
 import org.chombo.util.SecondarySort;
 import org.chombo.util.Tuple;
 import org.chombo.util.Utility;

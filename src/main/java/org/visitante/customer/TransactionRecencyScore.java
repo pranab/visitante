@@ -32,9 +32,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.chombo.util.ExponentialDistribution;
-import org.chombo.util.ProbabilityDistribution;
-import org.chombo.util.StandardNormalDistribution;
+import org.chombo.stats.ExponentialDistribution;
+import org.chombo.stats.ProbabilityDistribution;
+import org.chombo.stats.StandardNormalDistribution;
 import org.chombo.util.Utility;
 
 /**
