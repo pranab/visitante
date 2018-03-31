@@ -35,6 +35,30 @@ The following blogs of mine are good source of details of visitante
     * Bounce rate
     * Visit depth distribution
 
+## Build
+For Hadoop 1
+* mvn clean install
+
+For Hadoop 2 (non yarn)
+* git checkout nuovo
+* mvn clean install
+
+For Hadoop 2 (yarn)
+* git checkout nuovo
+* mvn clean install -P yarn
+
+For spark
+* Build chombo first in master branch with 
+	* mvn clean install  
+	* sbt publishLocal
+* Build chombo-spark in  chombo/spark directory
+	* sbt clean package
+
+## Need help?
+Please feel free to email me at pkghosh99@gmail.com
+
+## Contribution
+Contributors are welcome. Please email me at pkghosh99@gmail.com
 
 
 
