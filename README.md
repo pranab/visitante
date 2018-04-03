@@ -1,6 +1,6 @@
 ## Introduction
-The goal of visitante is to calculate various web analytic metric as defined by 
-Avinash Kaushik (http://www.kaushik.net/avinash/) on the Hadoop and Storm platform.
+The original goal of visitante was to calculate various web analytic metric as defined by 
+Avinash Kaushik (http://www.kaushik.net/avinash/) on the Hadoop, Spark and Storm platform.
 However, it has evolved into a general purpose log analytic and mining solution, beyond 
 web server logs. 
 

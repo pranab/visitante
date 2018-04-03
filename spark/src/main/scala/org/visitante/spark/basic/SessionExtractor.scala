@@ -22,6 +22,7 @@ import org.chombo.spark.common.JobConfiguration
 import org.apache.spark.SparkContext
 import scala.collection.JavaConverters._
 import org.chombo.util.BasicUtils
+import org.visitante.util.LogParser
 
 
 /**
@@ -45,17 +46,37 @@ object SessionExtractor extends JobConfiguration {
 	   //configuration params
 	   val fieldDelimIn = appConfig.getString("field.delim.in")
 	   val fieldDelimOut = appConfig.getString("field.delim.out")
-	   
+	   val logFormatStd = getStringParamOrElse(appConfig, "log.formatStd", "NCSA")
+	   val logFieldList = getMandatoryStringListParam(appConfig, "log.fieldList", "missing output field list")
+	   val sessionIdName = getMandatoryStringParam(appConfig, "session.idName")
+	   val userIdName = getOptionalStringParam(appConfig, "user.idName");
+	   val dateTimeFormatStr = getStringParamOrElse(appConfig, "date.format", BasicUtils.EPOCH_TIME)
+	     
+	     
 	   val debugOn = appConfig.getBoolean("debug.on")
 	   val saveOutput = appConfig.getBoolean("save.output")
 	   
 	   val data = sparkCntxt.textFile(inputPath)
-	   
+	   val parsedLines = data.mapPartitions(part => {
+	     val parser = userIdName match {
+	       case (Some(id:String)) => new LogParser(logFormatStd, sessionIdName, id, dateTimeFormatStr)
+	       case None => new LogParser(logFormatStd, sessionIdName,  dateTimeFormatStr)
+	     }
+	     
+	     val lines = part.map(line => {
+	       parser.parse(line)
+	       val values = parser.getStringValues(logFieldList)
+	       values.mkString(fieldDelimOut)
+	     })
+	     lines
+	   }, true)
            
        if (debugOn) {
+         parsedLines.foreach(line => println(line))
        }
 	   
 	   if(saveOutput) {	   
+	     parsedLines.saveAsTextFile(outputPath)
 	   }
    }
 }
