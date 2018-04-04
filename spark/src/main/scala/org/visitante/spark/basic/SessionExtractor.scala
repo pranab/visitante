@@ -65,18 +65,24 @@ object SessionExtractor extends JobConfiguration {
 	     
 	     val lines = part.map(line => {
 	       parser.parse(line)
-	       val values = parser.getStringValues(logFieldList)
-	       values.mkString(fieldDelimOut)
+	       if (parser.contains(LogParser.SESSION_ID)) {
+	    	   val values = parser.getStringValues(logFieldList)
+	    	   values.mkString(fieldDelimOut)
+	       } else {
+	         "xx"
+	       }
 	     })
 	     lines
 	   }, true)
            
+	   val filtLines = parsedLines.filter(line => !line.equals("xx"))
+	   
        if (debugOn) {
-         parsedLines.foreach(line => println(line))
+         filtLines.foreach(line => println(line))
        }
 	   
 	   if(saveOutput) {	   
-	     parsedLines.saveAsTextFile(outputPath)
+	     filtLines.saveAsTextFile(outputPath)
 	   }
    }
 }

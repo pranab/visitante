@@ -150,6 +150,17 @@ public class LogParser implements Serializable {
 	public void parseW3C(String line) {
 	}
 	
+	public boolean contains(String... params) {
+		boolean doesContain = true;
+		for (String param : params) {
+			if (!fieldValues.containsKey(param)) {
+				doesContain = false;
+				break;
+			}
+		}
+		return doesContain;
+	}
+	
 	/**
 	 * @param params
 	 * @return
