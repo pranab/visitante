@@ -180,4 +180,19 @@ public class LogParser implements Serializable {
 		
 		return values;
 	}
+
+	/**
+	 * @param params
+	 * @return
+	 */
+	public Object[] getValues(List<String> params) {
+		Object[] values = new String[params.size()];
+		int i = 0;
+		for (String param : params) {
+			values[i++] = fieldValues.get(param);
+		}
+		
+		return values;
+	}
+
 }

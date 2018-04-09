@@ -1,5 +1,5 @@
 /*
- * chombo-spark: etl on spark
+ * visitante-spark: log analysis on spark
  * Author: Pranab Ghosh
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you
@@ -23,6 +23,7 @@ import org.apache.spark.SparkContext
 import scala.collection.JavaConverters._
 import org.chombo.util.BasicUtils
 import org.visitante.util.LogParser
+import org.chombo.spark.common.Record
 
 
 /**
@@ -51,8 +52,13 @@ object SessionExtractor extends JobConfiguration {
 	   val sessionIdName = getMandatoryStringParam(appConfig, "session.idName")
 	   val userIdName = getOptionalStringParam(appConfig, "user.idName");
 	   val dateTimeFormatStr = getStringParamOrElse(appConfig, "date.format", BasicUtils.EPOCH_TIME)
-	     
-	     
+	   val compElapasedTime = getBooleanParamOrElse(appConfig, "comp.elapasedTime", false)
+	   val fieldList = logFieldList.asScala.toList
+	   val sessIdOrd = fieldList.indexOf(LogParser.SESSION_ID)
+	   val dateTimeOrd = fieldList.indexOf(LogParser.DATE_TIME)
+	   val sortFields = Array(dateTimeOrd)
+	   
+
 	   val debugOn = appConfig.getBoolean("debug.on")
 	   val saveOutput = appConfig.getBoolean("save.output")
 	   
@@ -66,23 +72,58 @@ object SessionExtractor extends JobConfiguration {
 	     val lines = part.map(line => {
 	       parser.parse(line)
 	       if (parser.contains(LogParser.SESSION_ID)) {
-	    	   val values = parser.getStringValues(logFieldList)
-	    	   values.mkString(fieldDelimOut)
+	    	   val values = parser.getValues(logFieldList)
+	    	   val rec = Record(values.length)
+	    	   values.foreach(v => {rec.add(v)})
+	    	   rec
 	       } else {
-	         "xx"
+	         Record(1)
 	       }
 	     })
 	     lines
 	   }, true)
            
-	   val filtLines = parsedLines.filter(line => !line.equals("xx"))
+	   var finalrecs = parsedLines.filter(line => line.size > 1)
+	   
+	   if (compElapasedTime) {
+		   //group by session
+		   val keyedRecs = finalrecs.keyBy(v => {
+		     v.getString(sessIdOrd)
+		   }).groupByKey()
+		   
+		   //page stay time
+		   val keyedRecsWithElasedTime =  keyedRecs.map(kv => {
+		     var values = kv._2.toArray
+		     values.foreach(v => v.withSortFields(sortFields))
+		     values = values.sorted
+		     val elpaseedTimes = new Array[Long](values.size)
+		     for (i <- 0 to values.size-1) {
+		       if (i > 0) {
+		         val elapsedTime = values(i).getLong(dateTimeOrd) - values(i-1).getLong(dateTimeOrd)
+		         elpaseedTimes(i-1) = elapsedTime
+		       }
+		     }
+		     elpaseedTimes(elpaseedTimes.size - 1) = 0
+		     val valuesWithElapsedTime  = values.zip(elpaseedTimes).map(v => {
+		       //new rec with elapsed time at end
+		       val curRec = v._1
+		       val rec = Record(curRec.size + 1, curRec)
+		       rec.addLong(v._2)
+		       rec
+		     })
+		     (kv._1, valuesWithElapsedTime)
+		   })
+		   
+		   //get rid of keys
+		   finalrecs = keyedRecsWithElasedTime.flatMap(v => v._2)
+	   }
 	   
        if (debugOn) {
-         filtLines.foreach(line => println(line))
+         finalrecs.foreach(line => println(line))
        }
 	   
 	   if(saveOutput) {	   
-	     filtLines.saveAsTextFile(outputPath)
+	     finalrecs.saveAsTextFile(outputPath)
 	   }
    }
 }
