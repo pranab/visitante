@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.chombo.util.BaseAttribute;
 import org.chombo.util.BasicUtils;
 
 /**
@@ -36,9 +37,10 @@ public class LogParser implements Serializable {
 	private String logFormatStd;
 	private String sessionIdName;
 	private String userIdName;
-	private DateFormat sourceDateTimeFormat;
-	private DateFormat dateTimeFormat;
-	private Map<String, Object> fieldValues = new HashMap<String, Object>();
+	protected DateFormat sourceDateTimeFormat;
+	protected DateFormat dateTimeFormat;
+	protected Map<String, Object> fieldValues = new HashMap<String, Object>();
+	private  Map<String, String> fieldTypes = new HashMap<String, String>();
 	
 	public static final String LOG_FORMAT_NCSA = "NCSA";
 	public static final String LOG_FORMAT_W3C = "W3C";
@@ -56,6 +58,13 @@ public class LogParser implements Serializable {
 	public static final String COOKIE = "cookie";
 	public static final String SESSION_ID = "sessionId";
 	public static final String USER_ID = "userId";
+	public static final String TIME_ON_PAGE = "timeOnPage";
+	public static final String DATE_TIME_EPOCH = "dateTimeEpoch";
+	
+	
+	public LogParser() {
+		
+	}
 	
 	/**
 	 * @param logFormatStd
@@ -193,6 +202,23 @@ public class LogParser implements Serializable {
 		}
 		
 		return values;
+	}
+	
+	/**
+	 * @param fieldName
+	 * @return
+	 */
+	public static String getFieldType(String fieldName) {
+		String fieldType = BaseAttribute.DATA_TYPE_STRING;
+		if (fieldName.equals(DATE_TIME_EPOCH)) {
+			fieldType = BaseAttribute.DATA_TYPE_LONG;
+		} else if (fieldName.equals(TIME_ON_PAGE)) {
+			fieldType = BaseAttribute.DATA_TYPE_INT;
+		} else if (fieldName.equals(NUM_BYTES)) {
+			fieldType = BaseAttribute.DATA_TYPE_INT;
+		}
+		
+		return fieldType;
 	}
 
 }

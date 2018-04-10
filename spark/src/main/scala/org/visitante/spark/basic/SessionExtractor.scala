@@ -85,6 +85,7 @@ object SessionExtractor extends JobConfiguration {
            
 	   var finalrecs = parsedLines.filter(line => line.size > 1)
 	   
+	   //elapsed time between pages
 	   if (compElapasedTime) {
 		   //group by session
 		   val keyedRecs = finalrecs.keyBy(v => {
