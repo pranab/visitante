@@ -39,8 +39,6 @@ public class StandardLogParser extends LogParser {
 	protected DateFormat sourceDateTimeFormat;
 	protected DateFormat dateTimeFormat;
 	
-	public static final String LOG_FORMAT_NCSA = "NCSA";
-	public static final String LOG_FORMAT_W3C = "W3C";
 	public static final String CLIENT_IP_ADDRESS = "clientIpAddress";
 	public static final String CLIENT_ID = "clientId";
 	public static final String USER_NAME = "userName";
@@ -125,30 +123,29 @@ public class StandardLogParser extends LogParser {
 	 * @return
 	 */
 	private void parseNCSA(String line) {
-		String[] items = line.split("\\s+");
-		fieldValues.put(CLIENT_IP_ADDRESS, items[0]);
-		fieldValues.put(CLIENT_ID, items[1]);
-		fieldValues.put(USER_NAME, items[2]);
+		String[] items = BasicUtils.splitWithEmbeddedDelim(line, "\\s+", "\""," ", "+");
+		int i = 0;
+		fieldValues.put(CLIENT_IP_ADDRESS, items[i++]);
+		fieldValues.put(CLIENT_ID, items[i++]);
+		fieldValues.put(USER_NAME, items[i++]);
 		
-		String dateTimeStr = BasicUtils.slice(items[3] + " " + items[4], 1);
 		Date date = null;
 		try {
-			date = sourceDateTimeFormat.parse(dateTimeStr);
+			date = sourceDateTimeFormat.parse(items[i++]);
 		} catch (ParseException e) {
 			throw new IllegalArgumentException("failed date parsing " + e.getMessage());
 		}
 		fieldValues.put(DATE_TIME, date);
 		
-		fieldValues.put(HTTP_METHOD, BasicUtils.rightSlice(items[5], 1));
-		fieldValues.put(REQUEST_URL, items[6]);
-		fieldValues.put(HTTP_VERSION, BasicUtils.leftSlice(items[7], 1));
+		fieldValues.put(HTTP_METHOD, items[i++]);
+		fieldValues.put(REQUEST_URL, items[i++]);
+		fieldValues.put(HTTP_VERSION, items[i++]);
 		fieldValues.put(STATUS_CODE, items[8]);
-		fieldValues.put(CS_NUM_BYTES, Integer.parseInt(items[9]));
+		fieldValues.put(CS_NUM_BYTES, Integer.parseInt(items[i++]));
+		fieldValues.put(REFERRER, items[i++]);
+		fieldValues.put(USER_AGENT, items[i++]);
 		
-		String[] quItems = line.split("\"");
-		fieldValues.put(REFERRER, quItems[3]);
-		fieldValues.put(USER_AGENT, quItems[5]);
-		String[] cookieItems = quItems[7].split(";");
+		String[] cookieItems = items[i++].split(";");
 		for (String cookieItem : cookieItems) {
 			String[] nameValue = cookieItem.split("=");
 			if (nameValue[0].equals(sessionIdName)) {
@@ -170,7 +167,7 @@ public class StandardLogParser extends LogParser {
 		int i = 0;
 		int j = 2;
 		items[i++] = dateTime;
-		for ( ; i < tmpItems.length; ++i, ++j) {
+		for ( ; j < tmpItems.length; ++i, ++j) {
 			items[i] = tmpItems[j];
 		}
 		

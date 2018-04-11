@@ -12,6 +12,9 @@ import java.util.Map;
 public abstract class LogParser implements Serializable {
 	protected String logFormatStd;
 	protected Map<String, Object> fieldValues = new HashMap<String, Object>();
+	
+	public static final String LOG_FORMAT_NCSA = "NCSA";
+	public static final String LOG_FORMAT_W3C = "W3C";
 
 	/**
 	 * @param line

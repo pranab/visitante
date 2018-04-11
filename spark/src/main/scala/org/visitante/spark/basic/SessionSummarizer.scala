@@ -21,6 +21,7 @@ import org.chombo.spark.common.JobConfiguration
 import org.apache.spark.SparkContext
 import scala.collection.JavaConverters._
 import org.visitante.util.LogParser
+import org.visitante.util.StandardLogParser
 import org.chombo.util.BasicUtils
 import org.chombo.spark.common.Record
 
@@ -42,18 +43,19 @@ object SessionSummarizer extends JobConfiguration {
 	   val fieldDelimOut = appConfig.getString("field.delim.out")
 	   val logFieldList = getMandatoryStringListParam(appConfig, "log.fieldList", "missing field list").asScala.toArray
 	   val recSize = logFieldList.length
-	   val sessIdOrd = logFieldList.indexOf(LogParser.SESSION_ID)
-	   val dateTimeOrd = logFieldList.indexOf(LogParser.DATE_TIME_EPOCH)
-	   val timeSpentOrd = logFieldList.indexOf(LogParser.TIME_ON_PAGE)
+	   val sessIdOrd = logFieldList.indexOf(StandardLogParser.SESSION_ID)
+	   val dateTimeOrd = logFieldList.indexOf(StandardLogParser.DATE_TIME_EPOCH)
+	   val timeSpentOrd = logFieldList.indexOf(StandardLogParser.TIME_ON_PAGE)
 	   val debugOn = appConfig.getBoolean("debug.on")
 	   val saveOutput = appConfig.getBoolean("save.output")
+	   val parser = new StandardLogParser()
 	   
 	   val data = sparkCntxt.textFile(inputPath)
 	   val keyedRecs = data.map(line => {
 	     val items = line.split(fieldDelimIn)
 	     val rec = Record(recSize + 1)
 	     for (i <- 0 to recSize-1) {
-	       rec.addStringAsTyped(items(i), LogParser.getFieldType(logFieldList(i)))
+	       rec.addStringAsTyped(items(i), parser.getFieldType(logFieldList(i)))
 	     }
 	     rec.addInt(1)
 	     rec

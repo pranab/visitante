@@ -23,6 +23,7 @@ import org.apache.spark.SparkContext
 import scala.collection.JavaConverters._
 import org.chombo.util.BasicUtils
 import org.visitante.util.LogParser
+import org.visitante.util.StandardLogParser
 import org.chombo.spark.common.Record
 
 
@@ -53,9 +54,10 @@ object SessionExtractor extends JobConfiguration {
 	   val userIdName = getOptionalStringParam(appConfig, "user.idName");
 	   val dateTimeFormatStr = getStringParamOrElse(appConfig, "date.format", BasicUtils.EPOCH_TIME)
 	   val compElapasedTime = getBooleanParamOrElse(appConfig, "comp.elapasedTime", false)
+	   
 	   val fieldList = logFieldList.asScala.toList
-	   val sessIdOrd = fieldList.indexOf(LogParser.SESSION_ID)
-	   val dateTimeOrd = fieldList.indexOf(LogParser.DATE_TIME)
+	   val sessIdOrd = fieldList.indexOf(StandardLogParser.SESSION_ID)
+	   val dateTimeOrd = fieldList.indexOf(StandardLogParser.DATE_TIME)
 	   val sortFields = Array(dateTimeOrd)
 	   
 
@@ -64,15 +66,15 @@ object SessionExtractor extends JobConfiguration {
 	   
 	   val data = sparkCntxt.textFile(inputPath)
 	   val parsedLines = data.mapPartitions(part => {
-	     val parser = userIdName match {
-	       case (Some(id:String)) => new LogParser(logFormatStd, sessionIdName, id, dateTimeFormatStr)
-	       case None => new LogParser(logFormatStd, sessionIdName,  dateTimeFormatStr)
+	     val parser = logFormatStd match {
+	       case LogParser.LOG_FORMAT_NCSA => new StandardLogParser(logFormatStd, sessionIdName,  dateTimeFormatStr)
+	       case LogParser.LOG_FORMAT_W3C => new StandardLogParser(logFormatStd, sessionIdName,  dateTimeFormatStr)
 	     }
 	     
 	     val lines = part.map(line => {
 	       parser.parse(line)
-	       if (parser.contains(LogParser.SESSION_ID)) {
-	    	   val values = parser.getValues(logFieldList)
+	       if (parser.contains(StandardLogParser.SESSION_ID)) {
+	    	   val values = parser.getValues(logFieldList.asScala.toArray)
 	    	   val rec = Record(values.length)
 	    	   values.foreach(v => {rec.add(v)})
 	    	   rec
