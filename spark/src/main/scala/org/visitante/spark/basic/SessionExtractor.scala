@@ -1,5 +1,5 @@
 /*
- * visitante-spark: log analysis on spark
+ * visitante-spark: log and search analysis on spark
  * Author: Pranab Ghosh
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you
@@ -46,8 +46,8 @@ object SessionExtractor extends JobConfiguration {
 	   val appConfig = config.getConfig(appName)
 	   
 	   //configuration params
-	   val fieldDelimIn = appConfig.getString("field.delim.in")
-	   val fieldDelimOut = appConfig.getString("field.delim.out")
+	   val fieldDelimIn = getStringParamOrElse(appConfig, "field.delimIn", ",")
+	   val fieldDelimOut = getStringParamOrElse(appConfig, "field.delimOut", ",")
 	   val logFormatStd = getStringParamOrElse(appConfig, "log.formatStd", "NCSA")
 	   val logFieldList = getMandatoryStringListParam(appConfig, "log.fieldList", "missing output field list")
 	   val sessionIdName = getMandatoryStringParam(appConfig, "session.idName")

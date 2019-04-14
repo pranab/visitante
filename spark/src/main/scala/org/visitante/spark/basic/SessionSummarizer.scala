@@ -1,5 +1,5 @@
 /*
- * visitante-spark: log analysis on spark
+ * visitante-spark: log and search analysis on spark
  * Author: Pranab Ghosh
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you
@@ -39,8 +39,8 @@ object SessionSummarizer extends JobConfiguration {
 	   val appConfig = config.getConfig(appName)
 	   
 	   //configuration params
-	   val fieldDelimIn = appConfig.getString("field.delim.in")
-	   val fieldDelimOut = appConfig.getString("field.delim.out")
+	   val fieldDelimIn = getStringParamOrElse(appConfig, "field.delimIn", ",")
+	   val fieldDelimOut = getStringParamOrElse(appConfig, "field.delimOut", ",")
 	   val logFieldList = getMandatoryStringListParam(appConfig, "log.fieldList", "missing field list").asScala.toArray
 	   val recSize = logFieldList.length
 	   val sessIdOrd = logFieldList.indexOf(StandardLogParser.SESSION_ID)
