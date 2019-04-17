@@ -24,12 +24,19 @@ def cliskDistr(size):
 	if (isEventSampled(50)):
 		first = randint(0,3)
 		second = first + randint(1,3)
-		temp = distr[first]
-		distr[first] = distr[second]
-		distr[second] = temp
+		swap(distr, first, second)
 		
 	return distr			
-	
+
+def buildClickDistr(distr):
+	dvalues = []
+	for i, v in enumerate(distr):
+		iv = int(1000 * v)
+		t = (i,iv)
+		#print t
+		dvalues.append(t)
+	return CategoricalRejectSampler(dvalues)
+			
 op = sys.argv[1]
 
 if op == "score":
@@ -52,13 +59,11 @@ if op == "score":
 elif op == "qdist":
 	scFile = sys.argv[2]
 	numDocPerQuery = int(sys.argv[3])
-	queries = []
 	cuQuId = ""
 	for rec in fileRecGen(scFile, ","):
 		quId = rec[0]
 		if not quId == cuQuId:
 			cuQuId = quId
-			queries.append(quId)
 			distr = cliskDistr(numDocPerQuery)
 			sdistr = ["%.3f" %(d) for d in distr]
 			print quId + "," + ",".join(sdistr)
@@ -66,8 +71,10 @@ elif op == "qdist":
 	
 elif op == "rel":
 	scFile = sys.argv[2]
-	numEvent = int(sys.argv[3])
+	qdFile = sys.argv[3]
+	numEvent = int(sys.argv[4])
 
+	#doc scores
 	cuQuId = ""
 	quRes = {}
 	queries = []
@@ -76,15 +83,24 @@ elif op == "rel":
 		docId = rec[1]
 		if quId == cuQuId:
 			docs = quRes[cuQuId]
-			doc.append(docId)
+			docs.append(docId)
 		else:
 			cuQuId = quId
 			docs = []
-			doc.append(docId)
+			docs.append(docId)
 			quRes[cuQuId] = docs
 			queries.append(quId)
 	
-	sampIntv = 10
+	#click distr
+	cdistr = {}
+	for rec in fileRecGen(qdFile, ","):
+		quId =  rec[0]
+		dvalues = rec[1:]
+		distr = [float(d) for d in dvalues]
+		cdistr[quId] = buildClickDistr(distr)
+	
+	#events	
+	sampIntv = 15
 	curTime = int(time.time())
 	pastTime = curTime - (numEvent + 10000) * sampIntv
 	sampTime = pastTime
@@ -96,7 +112,7 @@ elif op == "rel":
 		#remove oldest session
 		maxElapsedTm = 0
 		for k, v in sessions.items():
-			elapsedTm = v[1] - sampTime
+			elapsedTm = sampTime - v[1]
 			if (elapsedTm > maxElapsedTm):
 				maxElapsedTm = elapsedTm
 				oldestSess = k
@@ -104,19 +120,25 @@ elif op == "rel":
 		threshold = sampleFromBase(sessTimeThreshold, 300)
 		if (maxElapsedTm > threshold):
 			del sessions[oldestSess]	
+			#print "removed session"
 		
 		#add user session
 		numSessThreshold = sampleFromBase(numSession, 2)
-		sessId = Null
+		sessId = None
 		if (len(sessions) < numSessThreshold):
-			sessId = genId(16)
+			sessId = genID(16)
 			quId = selectRandomFromList(queries)
 			sessions[sessId] = (quId, sampTime)
+			#print "added session"
 		
 		#click event
-		if sessId is not Null:
+		if sessId is None:
 			sessId = selectRandomFromList(sessions.keys())
-		
-		
+		quId = sessions[sessId][0]
+		dindex = cdistr[quId].sample()
+		docId = quRes[quId][dindex]
+		#print "doc index " + str(dindex)
+		print "%s,%s,%d" %(quId, docId, 1)
+		sampTime += sampleFromBase(sampIntv, 2)
 		
 		
