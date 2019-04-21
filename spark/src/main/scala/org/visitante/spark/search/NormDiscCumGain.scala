@@ -57,7 +57,8 @@ object NormDiscCumGain extends JobConfiguration {
 	   
 	   //relevance data
    	   val aggrRel = data.map(line => {
-   		   val items = BasicUtils.getTrimmedFields(BasicUtils.splitOnFirstOccurence(line, fieldDelimIn, true))
+   		   //println(line)
+   		   val items = BasicUtils.getTrimmedFields(line, fieldDelimIn)
    		   val keyRec = Record(2)
    		   keyRec.addString(items(relQueryIdOrd))
    		   keyRec.addString(items(relDocIdOrd))
@@ -77,7 +78,7 @@ object NormDiscCumGain extends JobConfiguration {
    	     relAggrOutPath match {
    	       case Some(outPath) => {
    	         keyedRel.map(r => r._1.toString() + fieldDelimOut + BasicUtils.formatDouble(r._2.getDouble(1), precision)).
-   	         	saveAsTextFile(outputPath)
+   	         	saveAsTextFile(outPath)
    	       }
    	       case None => BasicUtils.assertFail("missing aggregate relevance output file path")
    	     }
@@ -86,7 +87,7 @@ object NormDiscCumGain extends JobConfiguration {
 	   //score data
 	   val scoreData = sparkCntxt.textFile(scoreFilePath)
    	   val keyedScore = scoreData.map(line => {
-   		   val items = BasicUtils.getTrimmedFields(BasicUtils.splitOnFirstOccurence(line, fieldDelimIn, true))
+   		   val items = BasicUtils.getTrimmedFields(line, fieldDelimIn)
    		   val keyRec = Record(2)
    		   keyRec.addString(items(scoreQueryIdOrd))
    		   keyRec.addString(items(scoreDocIdOrd))
@@ -118,17 +119,23 @@ object NormDiscCumGain extends JobConfiguration {
    	   
    	   //calculate NCDG
    	   val ncdgrecs = unRecs.groupByKey.map(r => {
+   	     if (debugOn)
+   	       println("query: " + r._1)
    	     val values = r._2.toArray
    	     val valSortedByScore = values.sortWith((r1, r2) => r1.getDouble(1) > r2.getDouble(1)).zipWithIndex
+   	     if (debugOn)
+   	    	 println("cdg")
    	     val cdg = calculateCumDiscGain(valSortedByScore)
    	     val valSortedByrel = values.sortWith((r1, r2) => r1.getDouble(2) > r2.getDouble(2)).zipWithIndex
+   	     if (debugOn)
+   	    	 println("max cdg")
    	     val cdgMax = calculateCumDiscGain(valSortedByrel)
    	     val cdgNorm = cdg / cdgMax
    	     r._1 + fieldDelimOut +  BasicUtils.formatDouble(cdgNorm, precision)
    	   })
    	   
        if (debugOn) {
-         val records = ncdgrecs.collect.sliding(10)
+         val records = ncdgrecs.collect.slice(0, 20)
          records.foreach(r => println(r))
        }
 	   
@@ -146,7 +153,10 @@ object NormDiscCumGain extends JobConfiguration {
       var cdg = 0.0
       recs.foreach(r => {
         val rank = r._2 + 1
-        cdg += (Math.pow(2, r._1.getDouble(2)) -1) / Math.log(rank + 1)
+        //val rel = Math.log(r._1.getDouble(2))
+        val rel = r._1.getDouble(2)
+        println("rel: " + rel + "  rank: " + rank)
+        cdg += ((Math.pow(2, rel) - 1) / BasicUtils.log2(rank + 1))
       })
       cdg
 	}

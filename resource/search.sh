@@ -33,7 +33,7 @@ case "$1" in
 	rm -rf ./output/reaggr
 	$SPARK_HOME/bin/spark-submit --class $CLASS_NAME   \
 	--conf spark.ui.killEnabled=true --master $MASTER $VISITANTE_JAR_NAME  $INPUT $OUTPUT search.conf
-	ls -l ./output/caen
+	ls -l ./output/ncdg
 	;;
 
 *) 
