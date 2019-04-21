@@ -40,13 +40,13 @@ object NormDiscCumGain extends JobConfiguration {
 	   val fieldDelimIn = getStringParamOrElse(appConfig, "field.delimIn", ",")
 	   val fieldDelimOut = getStringParamOrElse(appConfig, "field.delimOut", ",")
 	   val scoreFilePath = getMandatoryStringParam(appConfig, "score.filePath", "missing score file path")
-	   val relQueryIdOrd = getMandatoryIntParam(appConfig, "rel.queryIdOrd", "missing relevance data query Id ordinal")
-	   val relDocIdOrd = getMandatoryIntParam(appConfig, "rel.docIdOrd", "missing relevance data doc Id ordinal")
-	   val relValueOrd = getMandatoryIntParam(appConfig, "rel.valueOrd", "missing relevance value ordinal")
+	   val relQueryIdOrd = 0
+	   val relDocIdOrd = 1
+	   val relValueOrd = 2
 	   val scoreQueryIdOrd = getMandatoryIntParam(appConfig, "score.queryIdOrd", "missing score data query Id ordinal")
 	   val scoreDocIdOrd = getMandatoryIntParam(appConfig, "score.docIdOrd", "missing score data doc Id ordinal")
 	   val scoreValueOrd = getMandatoryIntParam(appConfig, "score.valueOrd", "missing score value ordinal")
-	   val outputAggrRel = getBooleanParamOrElse(appConfig, "output.aggrRel", false)
+	   val outputRelAggr = getBooleanParamOrElse(appConfig, "output.relAggr", false)
 	   val relAggrOutPath = getOptionalStringParam(appConfig, "rel.aggrOutPath")
 	   val precision = getIntParamOrElse(appConfig, "output.precision", 3)
 	   val debugOn = appConfig.getBoolean("debug.on")
@@ -73,7 +73,7 @@ object NormDiscCumGain extends JobConfiguration {
 	       (r._1, valRec)
 	   }).cache
 
-	   if (outputAggrRel) {
+	   if (outputRelAggr) {
    	     relAggrOutPath match {
    	       case Some(outPath) => {
    	         keyedRel.map(r => r._1.toString() + fieldDelimOut + BasicUtils.formatDouble(r._2.getDouble(1), precision)).

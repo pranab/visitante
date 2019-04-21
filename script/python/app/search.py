@@ -15,10 +15,21 @@ def cliskDistr(size):
 		d = randomFloat(0, 0.95)
 		distr.append(d)
 		sum += d
-		
+	
+	#add some skew	
+	distr.sort(reverse = True)
+	for i in range(size/2):
+		distr[i] += randomFloat(0, 0.4)
+	
+	distr.sort(reverse = True)
+	for i in range(size/4):
+		distr[i] += randomFloat(0, 0.2)
+	
+	distr.sort(reverse = True)
+	
+	#normalize	
 	t = [d/sum for d in distr]
 	distr = t
-	distr.sort(reverse = True)
 	
 	#mutate
 	if (isEventSampled(50)):
@@ -56,7 +67,7 @@ if op == "score":
 			score = scores[j]
 			print "%s,%s,%.3f" %(quId, docId, score)
 			
-elif op == "qdist":
+elif op == "cdist":
 	scFile = sys.argv[2]
 	numDocPerQuery = int(sys.argv[3])
 	cuQuId = ""
