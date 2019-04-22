@@ -99,9 +99,18 @@ object NormDiscCumGain extends JobConfiguration {
    	   
    	   //union of score and relevance, key by query Id
    	   val unRecs = (keyedScore ++ keyedRel).groupByKey.map(r => {
-   	     val vArr = r._2.toArray
+   	     var vArr = r._2.toArray
    	     if (vArr.size != 2) {
-   	       BasicUtils.assertFail("expecting 2 value records found " + vArr.size)
+   	       if (vArr.size == 1) {
+   	         //generate relevance record with 0 relevance score
+   	         val reRec = Record(2)
+   	         reRec.addInt(2)
+	         reRec.addDouble(0)
+	         val ssRec = vArr(0)
+	         vArr = Array(ssRec, reRec)
+   	       } else {
+   	    	   BasicUtils.assertFail("expecting 2 value records found " + vArr.size)
+   	       }
    	     }
    	     val valueRec = Record(3)
    	     valueRec.addString(0, r._1.getString(1))
@@ -153,8 +162,7 @@ object NormDiscCumGain extends JobConfiguration {
       var cdg = 0.0
       recs.foreach(r => {
         val rank = r._2 + 1
-        //val rel = Math.log(r._1.getDouble(2))
-        val rel = r._1.getDouble(2)
+        val rel = Math.log(r._1.getDouble(2))
         println("rel: " + rel + "  rank: " + rank)
         cdg += ((Math.pow(2, rel) - 1) / BasicUtils.log2(rank + 1))
       })

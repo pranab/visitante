@@ -10,33 +10,42 @@ from sampler import *
 
 def cliskDistr(size):
 	distr = []
-	sum = 0
 	for i in range(size):
 		d = randomFloat(0, 0.95)
 		distr.append(d)
-		sum += d
+		
 	
 	#add some skew	
 	distr.sort(reverse = True)
 	for i in range(size/2):
-		distr[i] += randomFloat(0, 0.4)
+		distr[i] += randomFloat(0, 0.5)
 	
-	distr.sort(reverse = True)
 	for i in range(size/4):
-		distr[i] += randomFloat(0, 0.2)
+		distr[i] += randomFloat(0, 0.3)
 	
 	distr.sort(reverse = True)
-	
-	#normalize	
-	t = [d/sum for d in distr]
-	distr = t
 	
 	#mutate
-	if (isEventSampled(50)):
-		first = randint(0,3)
-		second = first + randint(1,3)
-		swap(distr, first, second)
+	if (isEventSampled(60)):
+		n = randint(1,3)
+		for i in range(n):
+			first = randint(0,3)
+			second = first + randint(1,3)
+			swap(distr, first, second)
 		
+	if (isEventSampled(60)):
+		n = randint(1,3)
+		for i in range(n):
+			j = randint(size/2, size -1)
+			distr[j] = 0
+		
+	#normalize	
+	sum = 0
+	for d in distr:
+		sum += d
+	t = [d/sum for d in distr]
+	distr = t
+
 	return distr			
 
 def buildClickDistr(distr):
