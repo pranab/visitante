@@ -48,6 +48,7 @@ object NormDiscCumGain extends JobConfiguration {
 	   val scoreValueOrd = getMandatoryIntParam(appConfig, "score.valueOrd", "missing score value ordinal")
 	   val outputRelAggr = getBooleanParamOrElse(appConfig, "output.relAggr", false)
 	   val relAggrOutPath = getOptionalStringParam(appConfig, "rel.aggrOutPath")
+	   val relRegularizer = getStringParamOrElse(appConfig, "rel.regularizer", "none")
 	   val precision = getIntParamOrElse(appConfig, "output.precision", 3)
 	   val debugOn = appConfig.getBoolean("debug.on")
 	   val saveOutput = appConfig.getBoolean("save.output")
@@ -134,11 +135,11 @@ object NormDiscCumGain extends JobConfiguration {
    	     val valSortedByScore = values.sortWith((r1, r2) => r1.getDouble(1) > r2.getDouble(1)).zipWithIndex
    	     if (debugOn)
    	    	 println("cdg")
-   	     val cdg = calculateCumDiscGain(valSortedByScore)
+   	     val cdg = calculateCumDiscGain(valSortedByScore, relRegularizer)
    	     val valSortedByrel = values.sortWith((r1, r2) => r1.getDouble(2) > r2.getDouble(2)).zipWithIndex
    	     if (debugOn)
    	    	 println("max cdg")
-   	     val cdgMax = calculateCumDiscGain(valSortedByrel)
+   	     val cdgMax = calculateCumDiscGain(valSortedByrel, relRegularizer)
    	     val cdgNorm = cdg / cdgMax
    	     r._1 + fieldDelimOut +  BasicUtils.formatDouble(cdgNorm, precision)
    	   })
@@ -158,11 +159,16 @@ object NormDiscCumGain extends JobConfiguration {
    	 * @param recs
    	 * @return
    	 */
-   	def calculateCumDiscGain(recs: Array[(org.chombo.spark.common.Record, Int)]) : Double = {
+   	def calculateCumDiscGain(recs: Array[(org.chombo.spark.common.Record, Int)], relRegularizer:String) : Double = {
       var cdg = 0.0
       recs.foreach(r => {
         val rank = r._2 + 1
-        val rel = Math.log(r._1.getDouble(2))
+        val rawRel = r._1.getDouble(2)
+        val rel = relRegularizer match {
+          case "logNatural" => if (rawRel > 1) Math.log(rawRel) else 0
+          case "logTen" => if (rawRel > 1) Math.log10(rawRel) else 0
+          case _ => rawRel
+        }
         println("rel: " + rel + "  rank: " + rank)
         cdg += ((Math.pow(2, rel) - 1) / BasicUtils.log2(rank + 1))
       })

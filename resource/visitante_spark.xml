@@ -1,0 +1,11 @@
+<project name="visitante_for_spark" default="uber-jar" basedir=".">
+<target name="uber-jar">
+    <echo>Packaging into a single uber JAR</echo>
+	<jar destfile="uber-visitante-spark-1.0.jar">
+		<zipgroupfileset dir="/Users/pranab/Projects/visitante/spark/target/scala-2.10" includes="visitante-spark_2.10-1.0.jar" /> 
+		<zipgroupfileset dir="/Users/pranab/Projects/chombo/spark/target/scala-2.10" includes="chombo-spark_2.10-1.0.jar" /> 
+		<zipgroupfileset dir="/Users/pranab/Projects/chombo/target" includes="chombo-1.0.jar" /> 
+		<zipgroupfileset dir="/Users/pranab/Projects/visitante/target" includes="visitante-1.0.jar" /> 
+	</jar>
+</target>
+</project>

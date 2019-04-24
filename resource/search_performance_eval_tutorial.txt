@@ -1,0 +1,55 @@
+This tutorial is evaluating for search result quality of Elastic Search or Solr using NCDG metric.  
+Make necessary changes in the script and configuration  files file path and other parameters  
+according  to your environment.
+
+Dependent script
+================
+Checkout the project avenir. Copy the directory ../python/lib  from that project and 
+paste it in ../lib directory with respect the directory containing search.py
+
+Build and Deployment
+====================
+Please refer to spark_dependency.txt
+
+Generate search engine result data
+=================================
+./search.sh genScore score <num_query> <num_doc> <num_docs_per_query> <output_file>
+
+where
+num_query = number of queries e.g. 20
+num_doc = number of docs e.fg 2000
+num_docs_per_query = number of docs per query e.g. 20
+output_file = output file e.g ss.txt
+
+The output file gets copied in the appropriate directory for Spark to use
+
+Generate click distribution for all queries
+===========================================
+./search.sh genClDist <search_score_file> <num_docs_per_query> <output_file>
+
+where
+search_score_file = search result file generated in the previous step e.g. ss.txt
+num_docs_per_query = number of docs per query e.g. 20
+output_file = output file e.g cd.txt
+
+Generate click data
+===================
+./search.sh genRel <search_score_file>  <click_distribution_file>  <num_records> <output_file>
+
+where
+search_score_file = search result file generated in the previous earlier e.g. ss.txt
+click_distribution_file = click distribution file generated earlier e.g cd.txt
+num_records = number of records to generate e.g. 50000
+output_file = output file e.g cl.txt
+
+The output file gets copied in the appropriate directory for Spark to use
+
+
+Run Spark for NCDG
+==================
+./search.sh ncdg
+
+Configuration
+=============
+it's in search.conf
+
