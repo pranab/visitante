@@ -6,7 +6,8 @@ web server logs.
 
 It also includes customer or marketing  analytic solution. Since customer behavior data 
 is mostly captured in logs, there is a close relationship between customer analytics and 
-log analytics.
+log analytics. Recently search analytics solutions have also been added
+
 
 ## Philosophy
 * Simple and easy to use batch and real time web analytic
@@ -20,6 +21,7 @@ The following blogs of mine are good source of details of visitante
 * https://pkghosh.wordpress.com/2014/10/05/tracking-web-site-bounce-rate-in-real-time/
 * https://pkghosh.wordpress.com/2016/01/19/detecting-incidents-with-context-from-log-data/
 * https://pkghosh.wordpress.com/2016/02/23/customer-lifetime-value-present-and-future/
+* https://pkghosh.wordpress.com/2019/04/24/elastic-search-or-solr-search-result-quality-evaluation-with-ncdg-on-spark/
 
 ## Solutions
 * Hadoop based batch analytic for 
